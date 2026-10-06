@@ -60,22 +60,24 @@ Criterio de salida:
 
 ## Fase 1: Base tecnica minima
 
+Estado: completada. Validada localmente con PostgreSQL en Docker, backend FastAPI y frontend React/Vite.
+
 Objetivo: crear el esqueleto del proyecto sin construir funcionalidades avanzadas.
 
 Entregables previstos:
 
-- Backend FastAPI inicial.
-- Frontend React inicial.
-- PostgreSQL local.
-- Configuracion basica de entorno.
-- Health checks.
-- Convenciones de estructura del repo.
+- Backend FastAPI inicial. Completado.
+- Frontend React inicial. Completado.
+- PostgreSQL local. Completado y verificado con `compose.yaml`.
+- Configuracion basica de entorno. Completado con `.env.example` versionables.
+- Health checks. Completado con `/health` y `/health/db`.
+- Convenciones de estructura del repo. Completado.
 
 Criterio de salida:
 
-- La app corre localmente.
-- Backend, frontend y database estan conectados de forma basica.
-- No hay todavia dependencia de una fuente real del Auction House.
+- La app corre localmente. Verificado para backend y frontend.
+- Backend, frontend y database estan conectados de forma basica. Verificado frontend -> backend y backend -> PostgreSQL.
+- No hay todavia dependencia de una fuente real del Auction House. Completado.
 
 ## Fase 2: Datos simulados e ingestion controlada
 

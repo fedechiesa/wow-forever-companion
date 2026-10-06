@@ -26,7 +26,7 @@ Fuera de alcance para v0.1:
 - Modelos predictivos avanzados.
 - Optimizaciones prematuras de escala.
 
-## Stack tentativo
+## Stack
 
 - Frontend: React.
 - Backend: Python + FastAPI.
@@ -40,7 +40,98 @@ La prioridad es mantener el sistema simple, explicable y facil de defender tecni
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
 
-La estructura propuesta del repositorio esta documentada en [Arquitectura](docs/ARCHITECTURE.md#estructura-propuesta-del-repositorio). Todavia no se inicializaron React, FastAPI ni PostgreSQL.
+La estructura propuesta del repositorio esta documentada en [Arquitectura](docs/ARCHITECTURE.md#estructura-propuesta-del-repositorio).
+
+## Desarrollo local
+
+### Requisitos
+
+- Python 3.11 o superior.
+- Node.js 20 o superior.
+- npm.
+- PostgreSQL local, o Docker con Docker Compose para levantar solo la base de datos.
+
+Docker se usa unicamente como opcion simple para PostgreSQL local. El frontend y el backend corren directamente en la maquina de desarrollo.
+
+### 1. Configurar variables de entorno
+
+Desde la raiz del repo:
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item backend\.env.example backend\.env
+Copy-Item frontend\.env.example frontend\.env
+```
+
+Los archivos `.env` locales estan ignorados por Git. Los valores incluidos son defaults de desarrollo y pueden ajustarse segun tu instalacion local.
+
+### 2. Levantar PostgreSQL
+
+Opcion con Docker:
+
+```powershell
+docker compose up -d postgres
+```
+
+Opcion sin Docker:
+
+1. Instalar PostgreSQL localmente.
+2. Crear una base `wow_forever_companion`.
+3. Crear un usuario `wow` con password `wow_dev_password`, o ajustar `backend\.env`.
+4. Verificar que `DATABASE_URL` apunte a tu instancia local.
+
+La comprobacion del backend esta disponible en:
+
+```text
+GET http://127.0.0.1:8000/health/db
+```
+
+### 3. Levantar el backend
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+Health check:
+
+```text
+GET http://127.0.0.1:8000/health
+```
+
+### 4. Levantar el frontend
+
+En otra terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+La app queda disponible en:
+
+```text
+http://127.0.0.1:5173/
+```
+
+Por ahora el frontend solo muestra una pantalla tecnica minima y comprueba que el backend este disponible. Todavia no hay UI real de Auction House, datos simulados, Market Intelligence ni IA.
+
+### 5. Validaciones utiles
+
+```powershell
+# Backend vivo
+Invoke-RestMethod http://127.0.0.1:8000/health
+
+# Conexion backend -> PostgreSQL
+Invoke-RestMethod http://127.0.0.1:8000/health/db
+
+# Frontend compila
+cd frontend
+npm run build
+```
 
 ## Supuestos pendientes de validar
 

@@ -36,6 +36,16 @@ La parte mas importante es el limite entre `Ingestion adapter` y `Normalized sna
 - Las oportunidades de mercado empezaran como reglas simples y auditables.
 - El asistente de IA no consultara datos crudos directamente; usara herramientas del backend con consultas controladas.
 
+## Decisiones tecnicas de Fase 1
+
+- El frontend se inicializa con React, TypeScript y Vite para mantener una configuracion moderna y pequena.
+- El backend se inicializa con FastAPI, `pydantic-settings` para configuracion y `psycopg` para comprobar conexion con PostgreSQL.
+- PostgreSQL se prepara para desarrollo local mediante `compose.yaml`, sin dockerizar frontend ni backend.
+- La configuracion local usa archivos `.env` ignorados por Git y archivos `.env.example` versionables.
+- La base actual no incluye modelos, migraciones ni tablas de dominio.
+- La comunicacion minima frontend -> backend usa `GET /health`.
+- La comprobacion minima backend -> PostgreSQL usa `GET /health/db`.
+
 ## Modulos principales
 
 ### Frontend
@@ -115,6 +125,7 @@ wow-forever-companion/
   docs/
     ARCHITECTURE.md
     ROADMAP.md
+  compose.yaml
   backend/
     app/
       api/
@@ -151,8 +162,9 @@ Responsabilidades previstas:
 - `data/samples`: datasets simulados versionables.
 - `data/imports`: archivos locales importados, normalmente no versionables.
 - `scripts`: comandos auxiliares simples.
+- `compose.yaml`: PostgreSQL local para desarrollo.
 
-Esta estructura es una propuesta, no una implementacion actual. En esta fase solo existen los archivos de documentacion.
+La Fase 1 implementa el esqueleto tecnico de frontend, backend y configuracion local. Los modulos de dominio siguen vacios a proposito hasta fases posteriores.
 
 ## Modelo de datos inicial
 
