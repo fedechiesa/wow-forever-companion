@@ -117,7 +117,7 @@ La app queda disponible en:
 http://127.0.0.1:5173/
 ```
 
-Por ahora el frontend solo muestra una pantalla tecnica minima y comprueba que el backend este disponible. Todavia no hay UI real de Auction House, datos simulados, Market Intelligence ni IA.
+El frontend muestra una pantalla tecnica minima y comprueba que el backend este disponible. El backend ya importa y consulta snapshots simulados de Fase 2; el frontend todavia no incluye una UI de Auction House.
 
 ### 5. Validaciones utiles
 
@@ -132,6 +132,107 @@ Invoke-RestMethod http://127.0.0.1:8000/health/db
 cd frontend
 npm run build
 ```
+
+### 6. Ejecutar migraciones
+
+Desde `backend`:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\migrate.py
+```
+
+El runner usa SQL plano desde `backend/migrations/`, crea `schema_migrations` si hace falta, ejecuta solo migraciones pendientes y registra las aplicadas.
+Las migraciones aplicadas no se editan: los cambios de esquema se agregan en archivos incrementales. Ejecutar un solo runner a la vez; no incorpora coordinacion entre procesos concurrentes.
+
+### 7. Importar snapshots simulados
+
+Desde `backend`, para cargar todos los snapshots de ejemplo en `data/samples/`:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\import_samples.py
+```
+
+Para importar un archivo puntual:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\import_snapshot.py ..\data\samples\snapshot_001.json
+```
+
+Tambien se puede importar enviando JSON directo al backend, desde la raiz del repositorio:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/imports/snapshots `
+  -ContentType application/json `
+  -InFile data\samples\snapshot_001.json
+```
+
+### 8. Consultas principales de Fase 2
+
+```powershell
+# Buscar items
+$items = Invoke-RestMethod "http://127.0.0.1:8000/items?search=Lotus"
+$itemId = $items[0].id
+
+# Listar snapshots e identificar el mercado
+$snapshots = Invoke-RestMethod "http://127.0.0.1:8000/snapshots"
+$realmId = $snapshots[0].realm_id
+
+# Consultar un item
+Invoke-RestMethod "http://127.0.0.1:8000/items/$itemId"
+
+# Consultar historico de un item
+Invoke-RestMethod "http://127.0.0.1:8000/items/$itemId/history?realm_id=$realmId"
+
+# Listar snapshots importados
+Invoke-RestMethod "http://127.0.0.1:8000/snapshots?realm=Everlook&region=wow-forever"
+
+# Listar importaciones
+Invoke-RestMethod "http://127.0.0.1:8000/imports"
+```
+
+Pipeline de ingestion implementado en Fase 2:
+
+```text
+JSON simulado
+  -> FileAdapter
+  -> NormalizedSnapshot
+  -> validacion Pydantic
+  -> IngestionService
+  -> PostgreSQL
+  -> endpoints de consulta historica
+```
+
+La Fase 2 guarda snapshots agregados por item. Todavia no calcula tendencias, volatilidad, oportunidades ni recomendaciones.
+
+Tablas actuales: `schema_migrations`, `realms`, `items`, `auction_snapshots`, `auction_snapshot_items` e `import_runs`. Los siete JSON de `data/samples/` contienen diez items distintos y 69 observaciones en total. Incluyen variaciones de precio y volumen, cambio de nombre/calidad y desaparicion/reaparicion de un item; son exclusivamente datos simulados.
+
+Reglas del pipeline:
+
+- Precios y cantidades: enteros estrictos entre 0 y 2147483647; floats, booleans y valores fuera de rango se rechazan con 422 por HTTP.
+- `captured_at` e `imported_at`, si se proporciona, requieren zona horaria y se normalizan a UTC.
+- Un realm se identifica por `realm_id`, con nombre y region visibles en snapshots e historicos. Regiones vacias o con solo espacios se normalizan a NULL en entrada; PostgreSQL rechaza valores no normalizados.
+- Los filtros aceptan `realm_id` o `realm` mas `region`. Un nombre ambiguo devuelve 422; un selector inexistente devuelve 404. `region=` selecciona region NULL. El historico sin selector solo se permite cuando hay un unico realm; `/snapshots` sin filtro lista mercados identificados.
+- La unicidad de un snapshot depende de `(realm_id, source_type, captured_at)` o `source_hash`. Reimportaciones secuenciales y concurrentes devuelven `duplicate` con el ID original y cero items importados. Dos imports concurrentes nuevos terminan como `completed` y `duplicate`.
+- `source_hash` es SHA-256 de los bytes originales para archivos y de JSON con claves ordenadas para HTTP. Pueden diferir entre transportes; la identidad relacional sigue evitando duplicados. La primera importacion conserva sus datos incluso si otro payload usa la misma identidad.
+- `external_item_id` es global. Cambios de nombre/calidad actualizan el catalogo sin cambiar `items.id` ni los agregados historicos.
+- `import_runs` registra intentos que alcanzaron ingestion/persistencia: completed, duplicate o failed. Errores de lectura, parsing y validacion previos quedan fuera. Un fallo de persistencia revierte los datos de mercado y registra failed en una transaccion separada; si PostgreSQL no esta disponible, tampoco puede garantizarse ese registro.
+
+### 9. Ejecutar tests en un entorno aislado
+
+Desde `backend`, instalar las dependencias de desarrollo y definir explicitamente una base separada:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+$env:TEST_DATABASE_URL = "postgresql://wow:wow_dev_password@localhost:5432/wow_forever_companion_test"
+.\.venv\Scripts\python.exe scripts\setup_test_database.py
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Adaptar las credenciales/host al PostgreSQL local. Tambien se puede definir `TEST_DATABASE_URL` en `backend/.env`, siempre ignorado por Git. El script crea la base de testing si no existe y aplica sus migraciones; necesita permisos para crearla.
+
+La suite exige un nombre terminado en `_test`, diferente del nombre de la base de desarrollo. Sin configuracion explicita, o si apunta a desarrollo, se niega a preparar el entorno. Cada test de integracion crea un esquema aleatorio, aplica las migraciones alli y elimina solamente ese esquema. No borra ni reinicia tablas o secuencias de desarrollo; tampoco limpia tablas compartidas del entorno de testing. Los tests unitarios y de validacion HTTP pueden ejecutarse sin base con `pytest tests/test_file_adapter.py tests/test_import_validation.py`.
 
 ## Supuestos pendientes de validar
 

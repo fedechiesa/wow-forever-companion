@@ -1,0 +1,18 @@
+{
+  "realm": "Everlook",
+  "region": "wow-forever",
+  "source_type": "simulated",
+  "source_version": "0.1",
+  "captured_at": "2026-10-04T00:00:00Z",
+  "items": [
+    {"external_item_id": "13468", "name": "Black Lotus", "quality": "uncommon", "min_buyout": 710000, "avg_buyout": 745000, "max_buyout": 800000, "quantity_total": 30, "auction_count": 8},
+    {"external_item_id": "12363", "name": "Arcane Crystal", "quality": "rare", "min_buyout": 720000, "avg_buyout": 820000, "max_buyout": 940000, "quantity_total": 14, "auction_count": 6},
+    {"external_item_id": "2770", "name": "Copper Ore", "quality": "common", "min_buyout": 122, "avg_buyout": 152, "max_buyout": 208, "quantity_total": 1800, "auction_count": 130},
+    {"external_item_id": "12359", "name": "Thorium Bar", "quality": "common", "min_buyout": 10300, "avg_buyout": 11400, "max_buyout": 13500, "quantity_total": 540, "auction_count": 61},
+    {"external_item_id": "14047", "name": "Runecloth", "quality": "common", "min_buyout": 418, "avg_buyout": 498, "max_buyout": 636, "quantity_total": 2460, "auction_count": 174},
+    {"external_item_id": "7078", "name": "Essence of Fire", "quality": "uncommon", "min_buyout": 120000, "avg_buyout": 160000, "max_buyout": 240000, "quantity_total": 14, "auction_count": 5},
+    {"external_item_id": "13452", "name": "Elixir of the Mongoose", "quality": "common", "min_buyout": 24500, "avg_buyout": 27600, "max_buyout": 34000, "quantity_total": 89, "auction_count": 24},
+    {"external_item_id": "14530", "name": "Heavy Runecloth Bandage", "quality": "common", "min_buyout": 860, "avg_buyout": 1030, "max_buyout": 1320, "quantity_total": 790, "auction_count": 45},
+    {"external_item_id": "16203", "name": "Greater Eternal Essence", "quality": "uncommon", "min_buyout": 73500, "avg_buyout": 82000, "max_buyout": 98000, "quantity_total": 34, "auction_count": 12}
+  ]
+}

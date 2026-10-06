@@ -1,0 +1,19 @@
+{
+  "realm": "Fixture Realm",
+  "region": null,
+  "source_type": "simulated-test",
+  "source_version": "0.1",
+  "captured_at": "2026-10-01T00:00:00Z",
+  "items": [
+    {
+      "external_item_id": "fixture-001",
+      "name": "Fixture Item",
+      "quality": "common",
+      "min_buyout": 100,
+      "avg_buyout": 150,
+      "max_buyout": 200,
+      "quantity_total": 10,
+      "auction_count": 2
+    }
+  ]
+}

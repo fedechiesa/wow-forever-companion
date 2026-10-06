@@ -42,9 +42,40 @@ La parte mas importante es el limite entre `Ingestion adapter` y `Normalized sna
 - El backend se inicializa con FastAPI, `pydantic-settings` para configuracion y `psycopg` para comprobar conexion con PostgreSQL.
 - PostgreSQL se prepara para desarrollo local mediante `compose.yaml`, sin dockerizar frontend ni backend.
 - La configuracion local usa archivos `.env` ignorados por Git y archivos `.env.example` versionables.
-- La base actual no incluye modelos, migraciones ni tablas de dominio.
+- La Fase 1 establecio la conexion basica; las tablas de dominio se incorporaron en Fase 2.
 - La comunicacion minima frontend -> backend usa `GET /health`.
 - La comprobacion minima backend -> PostgreSQL usa `GET /health/db`.
+
+## Decisiones tecnicas de Fase 2
+
+- Las migraciones usan SQL plano y un runner minimo con `psycopg`; no hay ORM ni Alembic todavia.
+- `external_item_id` es el identificador estable global de item para Fase 2.
+- Los snapshots duplicados se detectan por `source_hash` o por `realm_id`, `source_type` y `captured_at`.
+- Si un item conserva `external_item_id` pero cambia `name` o `quality`, se actualiza el catalogo actual sin duplicar el item ni reescribir historicos.
+- `POST /imports/snapshots` recibe JSON directo; no hay multipart/upload HTTP todavia.
+- `import_runs` registra intentos que alcanzaron ingestion/persistencia, completados, duplicados o fallidos. Errores previos de HTTP parsing, Pydantic o lectura/parseo de FileAdapter quedan fuera de esta trazabilidad.
+- Los precios se almacenan como enteros en copper.
+- La persistencia de Fase 2 guarda agregados por item dentro de cada snapshot, no subastas individuales.
+
+### Integridad, transacciones e identidad
+
+Tablas implementadas: `schema_migrations`, `realms`, `items`, `auction_snapshots`, `auction_snapshot_items`, `import_runs`. Las PK/FK, checks y restricciones de unicidad viven en PostgreSQL; Pydantic valida primero el contrato de entrada.
+
+Los cinco campos numericos de los agregados exigen enteros estrictos en `0..2147483647`. Ambos timestamps de entrada requieren timezone y se normalizan a UTC. El adapter no persiste datos ni calcula metricas.
+
+La identidad de realm es `(name, region)`, con `region` nullable y unicidad mediante `COALESCE(region, '')`. Pydantic recorta region y convierte vacios a NULL. La migracion incremental `002_normalize_realm_regions.sql` normaliza datos previos y agrega un check que rechaza regiones vacias o no recortadas en PostgreSQL. Si normalizar datos existentes produce un conflicto de unicidad, la migracion falla y se revierte; no fusiona mercados silenciosamente.
+
+El servicio obtiene/crea realms con `INSERT ... ON CONFLICT DO NOTHING` y lookup con la misma semantica del indice. Los snapshots usan tambien `ON CONFLICT DO NOTHING`; tras un conflicto concurrente, una nueva consulta bajo READ COMMITTED recupera el ID original. Los constraints permanecen como garantia final. Items, snapshot, agregados y registro completed/duplicate se confirman dentro de la misma transaccion. Un fallo de PostgreSQL revierte la importacion antes de intentar registrar failed con otra conexion/transaccion; si la base no responde, ese registro puede no existir.
+
+SHA-256 representa los bytes de un archivo, o JSON serializado con claves ordenadas en HTTP; no es un hash universal del modelo normalizado. La identidad relacional cubre reimportaciones equivalentes con distinta serializacion. El primer snapshot importado prevalece: un payload posterior con igual identidad se considera duplicate y no reescribe precios.
+
+Los endpoints existentes de snapshots e historicos exponen `realm_id`, nombre y region. Aceptan `realm_id` o nombre/region; rechazan nombres ambiguos con 422 y selectores inexistentes con 404. Region vacia en el filtro identifica NULL. El historico sin selector requiere un unico realm, evitando mezclar mercados; listar snapshots sin filtro conserva la identidad de cada registro.
+
+### Migraciones y tests
+
+Las migraciones SQL pendientes y su registro en `schema_migrations` son transaccionales. El runner es local y se ejecuta por un solo operador a la vez; no coordina ejecuciones paralelas. Los cambios posteriores usan nuevas migraciones, sin modificar una ya aplicada.
+
+La integracion usa una base separada configurada explicitamente con `TEST_DATABASE_URL`, cuyo nombre termina en `_test` y difiere del de desarrollo. `scripts/setup_test_database.py` la prepara y migra. Cada test crea un esquema propio y configura `search_path` exclusivamente alli, migra ese esquema y lo elimina al finalizar. No hay limpieza por nombres o prefijos de items en desarrollo. La suite incluye concurrencia real con dos conexiones/solicitudes, mercados homonimos, lectura fisica de JSON, limites numericos, timezone y rollback intermedio.
 
 ## Modulos principales
 
@@ -164,7 +195,7 @@ Responsabilidades previstas:
 - `scripts`: comandos auxiliares simples.
 - `compose.yaml`: PostgreSQL local para desarrollo.
 
-La Fase 1 implementa el esqueleto tecnico de frontend, backend y configuracion local. Los modulos de dominio siguen vacios a proposito hasta fases posteriores.
+La Fase 1 implemento el esqueleto tecnico. Fase 2 implementa ingestion, persistencia y consultas historicas; `market` y `ai_tools` siguen vacios.
 
 ## Modelo de datos inicial
 
@@ -297,10 +328,9 @@ Los precios deben guardarse como enteros en la unidad minima disponible, por eje
 2. El adaptador correspondiente parsea el formato original.
 3. El adaptador valida campos obligatorios.
 4. El adaptador convierte los datos al contrato normalizado.
-5. El backend persiste `auction_snapshots` y `auction_snapshot_items`.
-6. El servicio de Market Intelligence recalcula metricas afectadas.
-7. El sistema detecta oportunidades segun reglas activas.
-8. La UI y las herramientas de IA consultan datos ya normalizados.
+5. El backend persiste `realms`, `items`, `auction_snapshots` y `auction_snapshot_items`.
+6. Los endpoints de consulta leen items, snapshots, importaciones e historicos desde PostgreSQL.
+7. En fases posteriores, Market Intelligence podra calcular metricas y oportunidades sobre estos historicos.
 
 ## Reglas iniciales de oportunidades
 

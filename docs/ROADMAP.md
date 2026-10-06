@@ -81,21 +81,29 @@ Criterio de salida:
 
 ## Fase 2: Datos simulados e ingestion controlada
 
+Estado: completada y revalidada tras auditoria tecnica. Verificados migraciones SQL incrementales, snapshots JSON simulados, idempotencia secuencial/concurrente, identidad completa de realm y endpoints historicos contra PostgreSQL.
+
 Objetivo: validar el flujo de ingestion sin esperar la fuente real.
 
 Entregables previstos:
 
-- Generador de snapshots simulados.
-- Importador de archivo JSON o CSV controlado.
-- Contrato normalizado de snapshot.
-- Persistencia de realms, items, snapshots y agregados por item.
-- Registro basico de errores de importacion.
+- Snapshots simulados versionables. Completado con archivos JSON en `data/samples/`.
+- Importador de archivo JSON controlado. Completado con `FileAdapter` y scripts locales.
+- Contrato normalizado de snapshot. Completado con modelos Pydantic.
+- Persistencia de realms, items, snapshots y agregados por item. Completado con migraciones SQL.
+- Registro basico de errores de importacion. Completado con `import_runs`.
+- Contratos alineados con PostgreSQL INTEGER y timestamps con timezone normalizados a UTC. Completado.
+- Tests de integracion aislados en una base dedicada y un esquema propio por test. Completado con proteccion contra apuntar a desarrollo.
 
 Criterio de salida:
 
-- Podemos cargar multiples snapshots.
-- Podemos consultar historicos por item.
-- La fuente de datos esta desacoplada mediante adaptadores.
+- Podemos cargar multiples snapshots. Verificado con 7 snapshots simulados.
+- Podemos consultar historicos por item. Verificado con `GET /items/{item_id}/history`.
+- La fuente de datos esta desacoplada mediante adaptadores. Completado con contrato de adapter y `FileAdapter`.
+- Dos importaciones concurrentes del mismo snapshot devuelven completed y duplicate con el mismo ID, sin 500. Verificado con servidor HTTP real y tests de regresion.
+- Realms homonimos de distinta region no se mezclan en historicos. Verificado por realm_id y nombre/region; selectores ambiguos devuelven 422.
+- Suite final: 88 tests aprobados, incluida lectura fisica de JSON, rollback intermedio, limites numericos, timezone, migracion de regiones e idempotencia entre archivo y HTTP.
+- Datos y secuencias de desarrollo permanecen iguales antes/despues de la suite. Verificado con cantidades y hash de los registros; los esquemas temporales se eliminaron.
 
 ## Fase 3: Market Intelligence v0.1
 

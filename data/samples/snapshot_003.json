@@ -1,0 +1,19 @@
+{
+  "realm": "Everlook",
+  "region": "wow-forever",
+  "source_type": "simulated",
+  "source_version": "0.1",
+  "captured_at": "2026-10-03T00:00:00Z",
+  "items": [
+    {"external_item_id": "13468", "name": "Black Lotus", "quality": "uncommon", "min_buyout": 640000, "avg_buyout": 670000, "max_buyout": 720000, "quantity_total": 40, "auction_count": 12},
+    {"external_item_id": "12363", "name": "Arcane Crystal", "quality": "rare", "min_buyout": 350000, "avg_buyout": 410000, "max_buyout": 500000, "quantity_total": 31, "auction_count": 12},
+    {"external_item_id": "2770", "name": "Copper Ore", "quality": "common", "min_buyout": 118, "avg_buyout": 148, "max_buyout": 205, "quantity_total": 1680, "auction_count": 121},
+    {"external_item_id": "12359", "name": "Thorium Bar", "quality": "common", "min_buyout": 10800, "avg_buyout": 11900, "max_buyout": 14000, "quantity_total": 510, "auction_count": 59},
+    {"external_item_id": "14047", "name": "Runecloth", "quality": "common", "min_buyout": 425, "avg_buyout": 505, "max_buyout": 645, "quantity_total": 2410, "auction_count": 171},
+    {"external_item_id": "7078", "name": "Essence of Fire", "quality": "uncommon", "min_buyout": 80000, "avg_buyout": 105000, "max_buyout": 150000, "quantity_total": 24, "auction_count": 9},
+    {"external_item_id": "7082", "name": "Essence of Air", "quality": "uncommon", "min_buyout": 215000, "avg_buyout": 270000, "max_buyout": 350000, "quantity_total": 6, "auction_count": 2},
+    {"external_item_id": "13452", "name": "Elixir of the Mongoose", "quality": "common", "min_buyout": 26000, "avg_buyout": 29000, "max_buyout": 35000, "quantity_total": 83, "auction_count": 22},
+    {"external_item_id": "14530", "name": "Heavy Runecloth Bandage", "quality": "common", "min_buyout": 880, "avg_buyout": 1060, "max_buyout": 1360, "quantity_total": 760, "auction_count": 43},
+    {"external_item_id": "16203", "name": "Greater Eternal Essence", "quality": "uncommon", "min_buyout": 72000, "avg_buyout": 80500, "max_buyout": 96000, "quantity_total": 36, "auction_count": 13}
+  ]
+}
