@@ -77,6 +77,94 @@ Las migraciones SQL pendientes y su registro en `schema_migrations` son transacc
 
 La integracion usa una base separada configurada explicitamente con `TEST_DATABASE_URL`, cuyo nombre termina en `_test` y difiere del de desarrollo. `scripts/setup_test_database.py` la prepara y migra. Cada test crea un esquema propio y configura `search_path` exclusivamente alli, migra ese esquema y lo elimina al finalizar. No hay limpieza por nombres o prefijos de items en desarrollo. La suite incluye concurrencia real con dos conexiones/solicitudes, mercados homonimos, lectura fisica de JSON, limites numericos, timezone y rollback intermedio.
 
+## Decisiones técnicas de Fase 2.5
+
+Auctionator aporta evidencia parcial, por lo que no se fuerza al contrato de
+snapshots completos ni se calculan campos faltantes. Flujo agregado:
+
+```text
+SavedVariables Lua / LibCBOR confirmado
+  -> lector de literales con límites
+  -> AuctionatorAdapter (sin PostgreSQL)
+  -> NativeExportEvidence + PartialBatch / PartialObservation (Pydantic)
+  -> PartialIngestionService
+  -> partial_markets / partial_items / partial_observations / partial_import_runs
+  -> partial_exports / partial_export_facts / partial_export_imports
+  -> /partial/markets, /partial/items, /partial/history, /partial/imports
+```
+
+`003_create_partial_observations.sql` agrega cuatro tablas; no modifica las tablas
+de Fase 2. El catálogo parcial conserva item_key, ID y tipo; nombres/calidad
+permanecen desconocidos. Pet species, gear level y sufijos tienen claves propias
+y no se fusionan con el item básico. Región y source_id son contexto explícito
+del operador. El dataset forma parte de la identidad del mercado y separa real de
+simulado aun con la misma región/clave. Las claves realm/facción necesitan mapping
+de ruleset confirmado y se preservan literalmente.
+
+Una observación contiene una estadística y un valor entero, un scan_day opcional,
+mercado/item y procedencia. Se representa mínimo diario almacenado, mayor mínimo
+diario, disponibilidad máxima o último mínimo. Nunca promedio, ventas o
+auction_count. Días y disponibilidad ausentes no se completan. La base temporal
+puede ser desconocida; la fecha de importación no se convierte en fecha del scan.
+
+La identidad diaria incluye mercado, item con variante, fuente, base temporal,
+índice diario y estadística. Una lectura importada extiende los extremos por
+LEAST/GREATEST como acumulación de la aplicación; un archivo viejo no los reduce. El último mínimo
+no tiene fecha y se conserva por hash del estado normalizado del export. El hash
+normalizado tolera orden/whitespace/transporte; cada intento además guarda el hash
+de origen, versión y referencia. Las observaciones enlazan primer/último import
+que cambió su valor. Los intentos sin cambios ni evidencia nueva registran duplicate; los fallos SQL
+revierten el batch antes de intentar registrar failed con una nueva transacción.
+El hardening adquiere primero todos los locks de items en orden global de item_key,
+luego todos los mercados, evidencia nativa, observaciones y vínculo de recepción. Los locks cubren también
+estadísticas todavía ausentes, de modo que dos batches parciales concurrentes no
+pueden confirmar un par mínimo/máximo contradictorio. Se valida la combinación
+persistida antes de commit y un fallo revierte el batch completo. Sólo deadlocks
+40P01 admiten dos retries de transacción entera, sin registrar failed intermedios.
+
+La 004 separa tres niveles: hechos nativos inmutables l/h/a/m por export; extremos
+acumulados en 003; proyección explícita de GetPriceHistory por export_id. No hay
+métricas de Fase 3. Un l ausente no se materializa como hecho: sólo la proyección
+usa h y marca minimum_origin=h_fallback. Identidades originales, presencia de
+campos y tablas vacías se preservan en hechos/manifest; las identidades de hechos
+son copias independientes de cambios posteriores del catálogo.
+
+El hash canónico v1 incluye contexto, estructura y hechos, excluyendo recepción,
+ruta, serialización y IDs locales. No reemplaza el hash normalizado anterior de m.
+Un estado idéntico comparte export_id con distintos vínculos a import_runs; esto
+no demuestra que sea el mismo evento físico de exportación. No se asigna orden
+de observación a archivos recibidos tarde. La 004 deja vacías sus tablas y no
+atribuye evidencia ficticia a los 16.628 registros anteriores.
+
+Construcción, sellado, acumulación y vínculo confirman en una transacción. Dos
+funciones guardan cabecera e hijos frente a cambios, borrados, TRUNCATE y anexado
+a hechos sellados; un constraint trigger diferido exige sellado y primer vínculo
+al commit. Conteo y coherencia l/h/a se comprueban al sellar. La validación del
+manifest, identidades y proyección pertenece al contrato/servicio, sin triggers
+de estructura JSON ni métricas. SQL de administradores que desactiven las
+protecciones queda fuera de la garantía. Ver [detalle](PHASE_25_EXPORT_EVIDENCE.md).
+
+Los nuevos tests PostgreSQL reutilizan la base `_test` y un esquema aleatorio por
+test. Las tablas, datos y secuencias de desarrollo no se usan para limpiar tests.
+La importación simulada en desarrollo es una acción de validación explícita y
+permanece en tablas/mercados separados de snapshots y de evidencia real.
+
+El simulador usa PRNG local con seed fija y reproduce actualización de campos del
+addon para tres lecturas sintéticas por día observado. Exporta un Lua y dos JSON
+auxiliares; no genera subastas individuales. Items, precios y disponibilidades son
+explícitamente ficticios/simulados. No agrega análisis ni señales de Fase 3.
+
+Ver [evidencia y límites de Auctionator 340](AUCTIONATOR_340.md): siguen pendientes
+un SavedVariables real, selección de ruta AH de Forever y el codec nativo de
+C_EncodingUtil. Sólo LibCBOR inspeccionado se selecciona explícitamente para strings
+serializados. No se carga ni ejecuta el addon o el Lua importado.
+
+ModernAH divide buyout por cantidad y admite fracciones: se mantiene rechazo
+explícito, sin escala o redondeo inventados. Los decimales Lua se leen como Decimal
+y se rechazan antes de persistencia. Los límites de parsing son compartidos con
+todos los decoders CBOR; el límite de observaciones se comprueba durante construcción.
+La detección del marcador simulado tolera BOM/whitespace, sin garantizar autenticidad.
+
 ## Modulos principales
 
 ### Frontend

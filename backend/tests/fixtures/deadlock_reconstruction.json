@@ -1,0 +1,29 @@
+{
+  "provenance": "Constructed from the audit finding description; exact original audit payloads were not supplied.",
+  "batches": [
+    {
+      "source_id": "deadlock-reconstruction",
+      "source_type": "auctionator",
+      "dataset": "real",
+      "region": "test-only",
+      "observations": [
+        {"market_key": "HC", "ruleset": "HC", "item_key": "911", "external_item_id": "911", "key_kind": "item", "statistic": "daily_minimum", "scan_day": 2500, "value": 100},
+        {"market_key": "HC", "ruleset": "HC", "item_key": "911", "external_item_id": "911", "key_kind": "item", "statistic": "daily_highest_minimum", "scan_day": 2500, "value": 100},
+        {"market_key": "RP", "ruleset": "RP", "item_key": "910", "external_item_id": "910", "key_kind": "item", "statistic": "daily_minimum", "scan_day": 2500, "value": 100},
+        {"market_key": "RP", "ruleset": "RP", "item_key": "910", "external_item_id": "910", "key_kind": "item", "statistic": "daily_highest_minimum", "scan_day": 2500, "value": 100}
+      ]
+    },
+    {
+      "source_id": "deadlock-reconstruction",
+      "source_type": "auctionator",
+      "dataset": "real",
+      "region": "test-only",
+      "observations": [
+        {"market_key": "PvE", "ruleset": "PvE", "item_key": "910", "external_item_id": "910", "key_kind": "item", "statistic": "daily_minimum", "scan_day": 2500, "value": 200},
+        {"market_key": "PvE", "ruleset": "PvE", "item_key": "910", "external_item_id": "910", "key_kind": "item", "statistic": "daily_highest_minimum", "scan_day": 2500, "value": 200},
+        {"market_key": "PvP", "ruleset": "PvP", "item_key": "911", "external_item_id": "911", "key_kind": "item", "statistic": "daily_minimum", "scan_day": 2500, "value": 200},
+        {"market_key": "PvP", "ruleset": "PvP", "item_key": "911", "external_item_id": "911", "key_kind": "item", "statistic": "daily_highest_minimum", "scan_day": 2500, "value": 200}
+      ]
+    }
+  ]
+}

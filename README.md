@@ -2,7 +2,7 @@
 
 WoW Forever Companion es un proyecto personal de portfolio y una herramienta pensada para acompanar el juego desde el lanzamiento de WoW Forever. El foco inicial es construir Market Intelligence para el Auction House: entender precios, volumen, tendencias y oportunidades de mercado a partir de snapshots historicos.
 
-La fuente real de datos del Auction House todavia no esta definida. Podria venir de Auctionator, otro addon, una API oficial/no oficial o archivos exportados manualmente. Por eso la primera decision arquitectonica del proyecto es desacoplar la ingestion de datos del resto de la aplicacion.
+Auctionator 340 es la fuente candidata para observaciones parciales de precios y disponibilidad. Su integración se basa en código local inspeccionado y sigue pendiente de un SavedVariables real de Forever. Los snapshots completos de Fase 2 conservan su contrato independiente.
 
 ## Objetivo de v0.1
 
@@ -242,6 +242,109 @@ La suite exige un nombre terminado en `_test`, diferente del nombre de la base d
 - Si existira una API confiable o si dependeremos de exports de addons.
 - Como se identificaran items de forma estable en WoW Forever.
 - Si habra restricciones legales, tecnicas o de terminos de uso para obtener datos.
+
+## Fase 2.5: Auctionator y mercado fresh simulado
+
+Implementación con validación real de Forever todavía pendiente. No incluye Market Intelligence.
+La [investigación de Auctionator 340](docs/AUCTIONATOR_340.md) detalla evidencia,
+formatos soportados y límites. El addon ofrece mínimos diarios, mayor mínimo diario,
+disponibilidad máxima y último mínimo sin fecha. No ofrece ventas, promedio de
+publicaciones ni cantidad de subastas en esta base de precios.
+
+Desde `backend`, aplicar la migración incremental y generar/importar datos:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\migrate.py
+.\.venv\Scripts\python.exe scripts\generate_fresh_market.py
+.\.venv\Scripts\python.exe scripts\import_auctionator.py ..\data\imports\fresh\Auctionator.lua --source-id fresh-seed-340 --region simulation --dataset simulated
+# Repetir el último comando reutiliza export_id, devuelve duplicate y cero cambios.
+```
+
+El generador usa seed 340, 50 items ficticios, 30 días y cuatro mercados
+PvE/PvP/HC/RP. Produce 16.628 estadísticas (16.428 diarias y 200 últimos mínimos
+sin fecha), no 16.628 subastas. Perfiles: materiales abundantes, demanda creciente,
+oferta escasa, volatilidad temprana que se estabiliza, aparición tardía y días sin
+observación. Los IDs y nombres son **FICTIONAL** y todos los precios/disponibilidades
+son **SIMULATED**. Los tres archivos generados (Lua, catálogo y contexto) quedan
+en `data/imports/fresh/`, ignorados por Git. Opciones: `--seed`, `--days`, `--items`,
+`--markets` y `--output`. No se representan ventas ni auction_count.
+
+Para un archivo real, usar una identidad estable de cuenta/export y región explícita:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\import_auctionator.py C:\ruta\Auctionator.lua --source-id cuenta-local-reloj-original --region wow-forever --dataset real
+# Si la clave es realm/facción, agregar --market-map C:\ruta\markets.json
+# Ejemplo de ese JSON: { "Everlook Alliance": "PvE" }, sólo si el ruleset está confirmado.
+# Sólo para serialización LibCBOR verificada: --allow-libcbor
+# Sólo con base temporal comprobada: --scan-day-zero "2020-01-01T00:00:00Z"
+```
+
+Sin base temporal se guarda el índice del addon; no se asume UTC ni la fecha de
+importación como observación. No se anuncia soporte para el codec nativo del cliente.
+El parser de literales Lua/LibCBOR aplica límites de tamaño/profundidad y no ejecuta código.
+
+Consultas, con el backend iniciado:
+
+```powershell
+$markets = Invoke-RestMethod http://127.0.0.1:8000/partial/markets
+$marketId = ($markets | Where-Object { $_.market_key -eq 'PvE' -and $_.dataset -eq 'simulated' -and $_.region -eq 'simulation' }).id
+Invoke-RestMethod "http://127.0.0.1:8000/partial/items?market_id=$marketId"
+Invoke-RestMethod "http://127.0.0.1:8000/partial/history?market_id=$marketId&item_key=1900000000&source_id=fresh-seed-340"
+Invoke-RestMethod http://127.0.0.1:8000/partial/imports
+```
+
+El histórico exige mercado, item_key y source_id; `temporal_basis` selecciona una
+serie con base conocida (default `unknown`). Acepta `start_day`, `end_day`, `limit`
+y `offset`. Los últimos mínimos sin fecha aparecen después de los días; un filtro
+de días los excluye. `/partial/items` acepta limit/offset; `/partial/imports` acepta
+limit. `POST /partial/imports` acepta el contrato JSON `PartialBatch`, no Lua ni paths
+locales. Las importaciones Lua se hacen por CLI.
+
+Los datos parciales usan las cuatro tablas de 003 y tres tablas de evidencia de 004,
+con un catálogo sin nombres inventados.
+Mercados reales y simulados tienen identidades separadas. Las tablas y endpoints de
+snapshots completos permanecen independientes.
+
+Pruebas: usar la misma base dedicada y setup de la sección 9; luego ejecutar toda
+la suite con `python -m pytest -q -p no:cacheprovider`. Para parser/simulador sin DB:
+`python -m pytest tests/test_auctionator.py -q -p no:cacheprovider`.
+El [informe de validación](docs/PHASE_25_VALIDATION.md) registra resultados físicos,
+idempotencia y preservación de Fase 2.
+
+### Hardening tras auditoría adversarial
+
+El importador ordena globalmente locks de items, después mercados y después
+observaciones; valida la coherencia min/max contra los datos persistidos antes de
+commit y reintenta sólo deadlocks 40P01 (máximo tres intentos). Claves literales
+PvE/PvP/HC/RP deben coincidir con su ruleset; los mappings sólo resuelven claves
+externas. Los límites se aplican durante construcción y con un presupuesto
+compartido de parsing Lua/CBOR. El marcador SIMULATED se reconoce con BOM o
+whitespace inicial, como protección contra errores de importación.
+
+ModernAH puede generar precios fraccionarios por división buyout/cantidad. El
+contrato de Fase 2.5 los **rechaza explícitamente sin redondear**; no debe afirmarse
+compatibilidad con todos los precios legítimos del addon. El índice diario se fija
+al cargar la sesión del addon y no se recalcula por scan.
+
+La tabla 003 conserva extremos acumulados entre imports. La 004 agrega
+`partial_exports`, `partial_export_facts` y `partial_export_imports`: campos nativos
+l/h/a/m, estructura y vínculos de recepción, sin guardar el Lua completo. No hace
+backfill ni reconstruye exports anteriores. Una primera importación con evidencia
+nueva puede devolver completed con cero cambios acumulados.
+
+El CLI devuelve `export_id`, `evidence_status` (created/reused) y `native_facts_seen`.
+Agregar `&export_id=ID` a `/partial/history` consulta exclusivamente ese export;
+el mínimo indica `minimum_origin=l` o `h_fallback`. Sin export_id sigue consultando
+el acumulado. `value_semantics` distingue ambos y los estados normalizados sin
+fecha. `/partial/imports` enlaza las recepciones; el POST normalizado anterior sigue
+funcionando con `evidence_status=unavailable` porque no conserva estructura nativa.
+Archivos antiguos no sustituyen un supuesto último estado observado; imported_at
+es recepción. Contenido idéntico reutiliza evidencia, registrando cada intento.
+
+Los triggers protegen hechos/cabeceras sellados y vínculos frente a modificaciones
+accidentales mediante SQL; la estructura y su proyección se validan en el servicio.
+Ver [evidencia por exportación](docs/PHASE_25_EXPORT_EVIDENCE.md) y el
+[informe de hardening](docs/PHASE_25_HARDENING.md) para hallazgos, regresiones y pendientes.
 
 ## Principio guia
 

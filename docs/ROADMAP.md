@@ -105,6 +105,49 @@ Criterio de salida:
 - Suite final: 88 tests aprobados, incluida lectura fisica de JSON, rollback intermedio, limites numericos, timezone, migracion de regiones e idempotencia entre archivo y HTTP.
 - Datos y secuencias de desarrollo permanecen iguales antes/despues de la suite. Verificado con cantidades y hash de los registros; los esquemas temporales se eliminaron.
 
+## Fase 2.5: Auctionator Integration & Fresh Market Simulation
+
+Estado: implementación y validación con fixtures/PostgreSQL realizadas;
+**pendiente de validación con SavedVariables real de Forever**. No se marca completa.
+
+Hardening adversarial: corregidos orden global de locks, retries acotados de 40P01,
+coherencia entre batches, rulesets literales, marcador simulado y límites durante
+parsing/construcción. Se documenta rechazo de fracciones legítimas ModernAH y el
+índice diario fijado en sesión. La decisión aprobada se implementa en 004:
+evidencia nativa inmutable separada del acumulado, sin backfill. Sigue pendiente
+recibir los payloads exactos de la auditoría para comparar la reproducción de
+deadlock; la regresión construida reproduce y corrige el mecanismo.
+Ver [informe de hardening](PHASE_25_HARDENING.md).
+
+Entregables implementados:
+
+- Inspección de Auctionator 340 externo, sin copiar ni modificar el addon.
+- Contrato Pydantic de evidencia parcial, separado de snapshots completos.
+- Parser de literales Lua y subconjunto LibCBOR comprobado, con límites y sin ejecución.
+- Adapter sin dependencia de PostgreSQL y servicio transaccional con trazabilidad.
+- Migración incremental 003: mercados, catálogo parcial, observaciones e imports.
+- Migración incremental 004: exports, hechos l/h/a/m y vínculos de recepción;
+  consulta explícita por export_id sin cambiar los acumulados ni Fase 2.
+- Identidad por mercado/dataset/item/fuente/base temporal/día/estadística; variantes
+  de items preservadas y últimos mínimos tratados como evidencia sin fecha.
+- CLI de importación y endpoints mínimos de imports, mercados, items e histórico.
+- Generador seed 340: 50 items ficticios, 30 días, cuatro mercados y 16.628
+  estadísticas simuladas, incluyendo ausencias y apariciones tardías.
+- Tests unitarios, validación HTTP y PostgreSQL aislado; reimportación y
+  persistencia física verificadas conservando datos y secuencias de Fase 2.
+- Documentación de [formatos/semántica](AUCTIONATOR_340.md) y
+  [validación inicial](PHASE_25_VALIDATION.md) y
+  [evidencia por exportación](PHASE_25_EXPORT_EVIDENCE.md).
+
+Criterio de salida todavía pendiente:
+
+- Ingerir un archivo SavedVariables auténtico de Auctionator 340 en Forever 1.60.1.
+- Confirmar claves de mercado/ruta de AH, codec realmente utilizado y base del reloj.
+- Validar comportamiento, cobertura y poda con datos reales.
+
+No se presupone soporte de C_EncodingUtil nativo, ventas ni snapshots completos
+a partir de Auctionator. Fase 3 no se inició en este trabajo.
+
 ## Fase 3: Market Intelligence v0.1
 
 Objetivo: convertir historicos en informacion util.

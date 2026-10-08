@@ -5,6 +5,7 @@ from app.api.health import router as health_router
 from app.api.imports import router as imports_router
 from app.api.items import router as items_router
 from app.api.snapshots import router as snapshots_router
+from app.api.partial import router as partial_router
 from app.core.config import settings
 
 
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     app.include_router(imports_router)
     app.include_router(items_router)
     app.include_router(snapshots_router)
+    app.include_router(partial_router)
     return app
 
 
