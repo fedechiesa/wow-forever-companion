@@ -13,7 +13,7 @@ Auction House data source
 Ingestion adapter
         |
         v
-Normalized snapshot contract
+Normalized full snapshot / partial evidence
         |
         v
 Backend API + domain services
@@ -25,7 +25,10 @@ PostgreSQL
 React UI / AI assistant tools
 ```
 
-La parte mas importante es el limite entre `Ingestion adapter` y `Normalized snapshot contract`. Todo lo que venga de Auctionator, otro addon, una API o un archivo exportado debe convertirse a un formato interno comun antes de tocar el resto del sistema.
+La parte más importante es el límite entre adaptadores y contratos normalizados.
+Snapshots completos y evidencia parcial tienen contratos independientes:
+Auctionator no debe fabricar campos de un snapshot completo. Market Intelligence
+consume series tipadas cuya semántica, fuente y base temporal se mantienen visibles.
 
 ## Decisiones iniciales
 
@@ -205,7 +208,7 @@ Adaptadores previstos:
 
 - `simulated`: datos generados para desarrollo.
 - `file_import`: CSV/JSON controlado.
-- `auctionator`: futuro adaptador si el formato resulta viable.
+- `auctionator`: adapter 340 implementado para los formatos verificados; compatibilidad con SavedVariables auténticos pendiente.
 - `api`: futuro adaptador si existe una API util.
 
 ### Market Intelligence
@@ -214,9 +217,10 @@ Responsabilidades:
 
 - Calcular estadisticas por item y ventana temporal.
 - Detectar tendencias simples.
-- Medir volatilidad.
-- Detectar oportunidades iniciales.
-- Calcular margenes de crafting cuando existan datos de profesiones y recetas.
+- Medir dispersión de niveles de mínimos guardados, no volatilidad de retornos.
+- Describir disponibilidad máxima, cobertura, muestra y procedencia.
+- Detectar oportunidades en Fase 3B, todavía no implementada.
+- Calcular márgenes de crafting solamente en etapas futuras con fuentes adicionales.
 
 En v0.1 se priorizan reglas explicables sobre modelos avanzados.
 
@@ -283,7 +287,9 @@ Responsabilidades previstas:
 - `scripts`: comandos auxiliares simples.
 - `compose.yaml`: PostgreSQL local para desarrollo.
 
-La Fase 1 implemento el esqueleto tecnico. Fase 2 implementa ingestion, persistencia y consultas historicas; `market` y `ai_tools` siguen vacios.
+La Fase 1 implementó el esqueleto técnico. Fases 2/2.5 implementan ingestión,
+persistencia y consultas históricas. `market` implementa Fase 3A;
+`ai_tools` permanece vacío.
 
 ## Modelo de datos inicial
 
@@ -345,30 +351,17 @@ Campos iniciales:
 - `quantity_total`
 - `auction_count`
 
-### `market_metrics`
+### Métricas de Fase 3A
 
-Metricas calculadas para un item, realm y ventana temporal.
-
-Campos iniciales:
-
-- `id`
-- `realm_id`
-- `item_id`
-- `window`
-- `calculated_at`
-- `min_price`
-- `avg_price`
-- `max_price`
-- `median_price`
-- `volume_total`
-- `volatility`
-- `trend`
-
-Estas metricas pueden recalcularse. La persistencia se justifica cuando haga mas simple consultar historicos o alimentar la UI.
+Se calculan bajo demanda; no existe una tabla `market_metrics` ni una migración
+de análisis. Identidad: mercado (región/dataset), item/variante, source_id,
+source_type, temporal_basis y modo; `export_id` adicional en modo export.
+No se incluyen `volume_total`, promedio de subastas ni máximo global.
+Contratos, fórmulas y validación en [PHASE_3A_VALIDATION.md](PHASE_3A_VALIDATION.md).
 
 ### `market_opportunities`
 
-Senales detectadas por reglas explicables.
+Propuesta futura de Fase 3B, no implementada: señales detectadas por reglas explicables.
 
 Campos iniciales:
 
@@ -383,9 +376,50 @@ Campos iniciales:
 - `current_price`
 - `status`
 
-## Contrato de snapshot normalizado
+## Market Intelligence implementado en Fase 3A
 
-Todo adaptador debe producir una estructura equivalente a:
+```text
+/market/series, /market/metrics
+  -> market/contracts.py (identidades y ventanas explícitas)
+  -> market/service.py (READ ONLY, REPEATABLE READ)
+  -> market/repository.py (SQL parametrizado; contextos/versiones/procedencia)
+  -> market/windows.py (eje del mercado, máximo 366 posiciones)
+  -> market/series.py (valores, ausencias, l/h_fallback y referencias)
+  -> market/statistics.py (funciones puras, Decimal precisión 40)
+  -> market/quality.py (cobertura y advertencias, sin score de confianza)
+  -> contratos de respuesta para React y futuras herramientas
+```
+
+`market/errors.py` separa selección inexistente (404), incoherencia (409) y
+ventana imposible (422); errores PostgreSQL se exponen como 503 sin detalles de
+credenciales. `api/market.py` adapta HTTP; no calcula métricas ni hace imports.
+
+Los dos proveedores son independientes. `accumulated` lee 003 y declara origen
+del mínimo desconocido. `export` lee hechos de un único estado sellado, usa
+identidades copiadas/manifest y proyecta l o h; un a ausente no se completa. Los
+vínculos de recepción no se unen a los puntos: reimports no multiplican muestras.
+La 004 vacía no impide analizar 003. Ningún proveedor consulta snapshots de Fase 2.
+
+Cada punto representa una posición de la ventana. En rangos se mantienen posiciones
+sin evidencia; en buckets observados se conservan los índices originales. Las
+métricas excluyen nulls y `m`, retienen ceros explícitos y muestran sus propios
+extremos observados. La pendiente usa scan_day, no orden de filas/recepciones.
+Base conocida permite convertir intervalos nominales de 86400 segundos, nunca
+timestamps de scans individuales. Ventanas calendario requieren base comprobada
+y fechas representables; su ancla no es necesariamente hoy.
+
+Las respuestas contienen `analysis_version=3a-v1`, contexto, ventana resuelta,
+puntos, métricas con estado/unidad/muestra, cobertura, calidad y procedencia.
+Los valores fuente son enteros y los derivados strings Decimal en notación fija,
+incluidos cambios negativos. El esquema OpenAPI conserva el patrón decimal sin
+exponentes. El contexto de cálculo fija precisión 40 y ROUND_HALF_EVEN sin heredar
+traps externos. No se redondea silenciosamente a copper ni se devuelve NaN/Infinity.
+Mediana/promedio dan el mismo peso a cada bucket con precio. Disponibilidad no es
+volumen transaccionado. Dispersión de niveles no es volatilidad de retornos.
+
+## Contrato de snapshot completo de Fase 2
+
+El adaptador de snapshots completos produce una estructura equivalente a:
 
 ```json
 {
@@ -425,7 +459,7 @@ Los precios deben guardarse como enteros en la unidad minima disponible, por eje
 Para v0.1, las reglas deben ser simples:
 
 - Precio actual por debajo de un porcentaje configurable de la media historica.
-- Volumen suficiente para evitar senales sobre datos demasiado chicos.
+- Evidencia y cobertura suficientes; disponibilidad máxima no demuestra ventas o liquidez.
 - Caida brusca respecto de snapshots recientes.
 - Alta volatilidad marcada como riesgo, no necesariamente como oportunidad.
 
@@ -460,8 +494,8 @@ Snapshots incompletos o poco frecuentes pueden producir metricas enganadoras.
 
 Mitigacion:
 
-- Guardar `captured_at` e `imported_at`.
-- Mostrar volumen y cantidad de observaciones.
+- Guardar `captured_at` solo cuando la fuente lo aporta; `imported_at` es recepción.
+- Mostrar disponibilidad máxima, buckets con dato, cobertura y procedencia.
 - No generar oportunidades cuando la muestra sea insuficiente.
 
 ### Complejidad prematura

@@ -107,16 +107,15 @@ Criterio de salida:
 
 ## Fase 2.5: Auctionator Integration & Fresh Market Simulation
 
-Estado: implementación y validación con fixtures/PostgreSQL realizadas;
-**pendiente de validación con SavedVariables real de Forever**. No se marca completa.
+Estado: implementación completada, auditada y pusheada. La compatibilidad con
+SavedVariables auténticos de Forever permanece pendiente y tiene validación separada.
 
 Hardening adversarial: corregidos orden global de locks, retries acotados de 40P01,
 coherencia entre batches, rulesets literales, marcador simulado y límites durante
 parsing/construcción. Se documenta rechazo de fracciones legítimas ModernAH y el
 índice diario fijado en sesión. La decisión aprobada se implementa en 004:
-evidencia nativa inmutable separada del acumulado, sin backfill. Sigue pendiente
-recibir los payloads exactos de la auditoría para comparar la reproducción de
-deadlock; la regresión construida reproduce y corrige el mecanismo.
+evidencia nativa inmutable separada del acumulado, sin backfill. Los informes de
+entrega conservan sus resultados y estados históricos previos a la auditoría/commit.
 Ver [informe de hardening](PHASE_25_HARDENING.md).
 
 Entregables implementados:
@@ -139,32 +138,51 @@ Entregables implementados:
   [validación inicial](PHASE_25_VALIDATION.md) y
   [evidencia por exportación](PHASE_25_EXPORT_EVIDENCE.md).
 
-Criterio de salida todavía pendiente:
+Validación real todavía pendiente:
 
 - Ingerir un archivo SavedVariables auténtico de Auctionator 340 en Forever 1.60.1.
 - Confirmar claves de mercado/ruta de AH, codec realmente utilizado y base del reloj.
 - Validar comportamiento, cobertura y poda con datos reales.
 
 No se presupone soporte de C_EncodingUtil nativo, ventas ni snapshots completos
-a partir de Auctionator. Fase 3 no se inició en este trabajo.
+a partir de Auctionator. La Fase 3A puede avanzar con simulación sin cerrar estos pendientes.
 
-## Fase 3: Market Intelligence v0.1
+## Fase 3A: Market Intelligence descriptivo
 
-Objetivo: convertir historicos en informacion util.
+Estado: implementada; validación y resultados en [PHASE_3A_VALIDATION.md](PHASE_3A_VALIDATION.md).
 
-Entregables previstos:
+Objetivo: convertir evidencia parcial compatible en estadísticas revisables.
 
-- Metricas por item y ventana temporal.
-- Minimo, promedio, maximo, mediana, volumen y volatilidad.
-- Tendencia simple.
-- Reglas iniciales de oportunidades.
-- Razones explicables para cada oportunidad.
+Entregables:
+
+- Modos accumulated y export explícitos e independientes; 004 vacía soportada.
+- Selección por mercado/región/dataset/item completo/fuente/base temporal.
+- Mínimo guardado y promedio/mediana de mínimos por bucket observado.
+- Variación absoluta/porcentual, desviación muestral, CV y pendiente sobre índices reales.
+- Disponibilidad máxima y cambios; sin ventas, demanda, liquidez o volumen transaccionado.
+- Ventanas de N buckets de mercado, rangos de índices y 7/14/30 días con base verificada.
+- Cobertura, ausencias, muestra, origen l/h_fallback y procedencia desconocida en acumulados.
+- GET /market/series y /market/metrics; contratos reutilizables, lectura consistente y Decimal.
+- Tests puros y PostgreSQL exclusivamente en testing dedicado/esquemas aislados.
 
 Criterio de salida:
 
-- Podemos identificar items con cambios relevantes de precio.
-- Las oportunidades muestran evidencia suficiente para ser revisadas manualmente.
-- Las reglas son simples de explicar y ajustar.
+- Podemos reproducir cálculos y revisar los puntos exactos utilizados.
+- Reimports y recepción fuera de orden no alteran la unidad de muestra.
+- Se distinguen null/zero, índices/calendario y acumulados/exports.
+- Los datos y secuencias de Fases 2/2.5 permanecen preservados.
+
+## Fase 3B: Oportunidades explicables
+
+Estado: pendiente; no incluida en 3A.
+
+Objetivo: evaluar reglas simples sobre métricas cuya evidencia pueda revisarse.
+Antes de implementarlas se deben definir cobertura/muestra mínimas y límites
+de las señales. Disponibilidad no permite inferir liquidez ni ventas. No usar m
+como precio actual ni recepción como cronología del mercado.
+
+Entregables futuros: reglas, razones y parámetros auditables. Sin predicciones
+o recomendaciones automáticas complejas.
 
 ## Fase 4: UI usable
 
@@ -174,9 +192,9 @@ Entregables previstos:
 
 - Lista/busqueda de items.
 - Vista de detalle de item.
-- Historico de precios y volumen.
+- Histórico de mínimos guardados y disponibilidad máxima, con cobertura y calidad.
 - Panel de oportunidades.
-- Filtros por realm, ventana temporal y tipo de oportunidad.
+- Filtros por mercado, dataset, fuente, base temporal, modo y ventana; oportunidades tras 3B.
 
 Criterio de salida:
 
@@ -212,9 +230,9 @@ Entradas esperadas:
 
 Entregables previstos:
 
-- Adaptador para la fuente elegida.
+- Validación del adaptador Auctionator existente con SavedVariables auténticos.
 - Ajustes al contrato normalizado si aparecen campos necesarios.
-- Pruebas con snapshots reales.
+- Pruebas de evidencia parcial real, rutas AH, codec, reloj, fracciones, cobertura y poda.
 
 Criterio de salida:
 
@@ -271,7 +289,7 @@ Una oportunidad basada en pocos snapshots puede ser enganosa.
 
 Respuesta del roadmap:
 
-- Mostrar volumen y cantidad de observaciones.
+- Mostrar disponibilidad máxima, buckets con dato, cobertura y procedencia; sin inferir volumen de ventas.
 - Aplicar umbrales minimos.
 - Marcar senales como sugerencias, no como certezas.
 

@@ -1,6 +1,6 @@
 # WoW Forever Companion
 
-WoW Forever Companion es un proyecto personal de portfolio y una herramienta pensada para acompanar el juego desde el lanzamiento de WoW Forever. El foco inicial es construir Market Intelligence para el Auction House: entender precios, volumen, tendencias y oportunidades de mercado a partir de snapshots historicos.
+WoW Forever Companion es un proyecto personal de portfolio y una herramienta pensada para acompanar el juego desde el lanzamiento de WoW Forever. El foco inicial es construir Market Intelligence para el Auction House: analizar mínimos guardados, disponibilidad máxima, cambios y dispersión a partir de evidencia histórica. Las oportunidades pertenecen a una fase posterior.
 
 Auctionator 340 es la fuente candidata para observaciones parciales de precios y disponibilidad. Su integración se basa en código local inspeccionado y sigue pendiente de un SavedVariables real de Forever. Los snapshots completos de Fase 2 conservan su contrato independiente.
 
@@ -10,11 +10,11 @@ La v0.1 debe ser una primera version usable para validar el producto con datos s
 
 Alcance concreto:
 
-- Definir un contrato comun para snapshots del Auction House.
+- Mantener contratos independientes para snapshots completos y evidencia parcial.
 - Ingerir datos simulados o archivos exportados en un formato controlado.
-- Guardar historico de items, precios, volumen y snapshots.
-- Consultar metricas basicas por item: precio minimo, precio medio, maximo, volumen, tendencia simple y volatilidad.
-- Detectar oportunidades iniciales con reglas explicables.
+- Guardar históricos de items, snapshots y estadísticas parciales con procedencia.
+- Consultar mínimos guardados, promedio/mediana de mínimos, cambios, dispersión, tendencia y disponibilidad máxima.
+- Detectar oportunidades iniciales con reglas explicables en Fase 3B, todavía pendiente.
 - Preparar el backend para exponer herramientas consultables por un asistente de IA sobre datos propios.
 - Proveer una interfaz simple para explorar items y ver senales de mercado.
 
@@ -345,6 +345,87 @@ Los triggers protegen hechos/cabeceras sellados y vínculos frente a modificacio
 accidentales mediante SQL; la estructura y su proyección se validan en el servicio.
 Ver [evidencia por exportación](docs/PHASE_25_EXPORT_EVIDENCE.md) y el
 [informe de hardening](docs/PHASE_25_HARDENING.md) para hallazgos, regresiones y pendientes.
+
+## Fase 3A: Market Intelligence descriptivo
+
+El motor consulta PostgreSQL en transacciones `READ ONLY, REPEATABLE READ` y no
+modifica observaciones, exports, imports ni secuencias. No agrega migraciones ni
+dependencias. Fase 3B (oportunidades), frontend, IA y predicciones permanecen fuera
+de esta entrega. [Definiciones y validación](docs/PHASE_3A_VALIDATION.md).
+
+Dos modos obligatorios e independientes:
+
+- `accumulated`: extremos de `partial_observations`, nunca el supuesto estado
+  más reciente del addon. El origen nativo del mínimo es `unknown`.
+- `export`: exactamente un `export_id` sellado. Proyecta `l`, o `h` si falta `l`,
+  indicando `minimum_origin=l|h_fallback`; disponibilidad solamente desde `a`.
+
+Ambos seleccionan mercado, item/variante completa, source_id, source_type y base
+temporal. Dataset/región provienen del mercado y se devuelven explícitamente.
+Fuentes, versiones, bases y modos no se fusionan. La 004 puede estar vacía:
+`accumulated` sigue funcionando, sin reconstruir evidencia nativa. `m` queda
+excluido porque no tiene fecha; recepción e IDs no establecen cronología de scans.
+
+Endpoints nuevos:
+
+- `GET /market/series?market_id=...&item_key=...`: contextos disponibles, modos,
+  bases y exports explícitos. Acepta `series_mode`, `limit` (1..100) y `offset`.
+  El orden de paginación no es cronología de observación.
+- `GET /market/metrics`: contexto, ventana, puntos, métricas, cobertura,
+  referencias de evidencia y advertencias. Los derivados Decimal se serializan
+  como strings decimales en notación fija (sin exponentes), con precisión de
+  cálculo 40 y ROUND_HALF_EVEN, sin redondear a copper entero. El contexto de
+  cálculo es independiente del redondeo y los traps del llamador Python.
+
+Ejemplo con el mercado simulado ya almacenado, sin importar archivos:
+
+```powershell
+$markets = Invoke-RestMethod http://127.0.0.1:8000/partial/markets
+$marketId = ($markets | Where-Object { $_.market_key -eq 'PvE' -and $_.dataset -eq 'simulated' -and $_.region -eq 'simulation' }).id
+Invoke-RestMethod "http://127.0.0.1:8000/market/series?market_id=$marketId&item_key=1900000000"
+$query = "market_id=$marketId&item_key=1900000000&source_id=fresh-seed-340&source_type=simulated&temporal_basis=unknown&series_mode=accumulated"
+Invoke-RestMethod "http://127.0.0.1:8000/market/metrics?$query&window_type=observed_buckets&size=30"
+Invoke-RestMethod "http://127.0.0.1:8000/market/metrics?$query&window_type=index_range&start_day=2500&end_day=2529"
+```
+
+En modo `export`, reemplazar `series_mode=accumulated` por `series_mode=export`
+y agregar `export_id=...` de un contexto descubierto. No elegir el export por
+una supuesta hora de scan.
+
+Ventanas, con máximo 366 posiciones y ancla del mercado/contexto:
+
+- `observed_buckets&size=N`: últimos N índices observados del mercado, no N
+  registros del item ni N días calendario. Puede devolver menos de N.
+- `index_range&start_day=A&end_day=B`: rango inclusivo, con huecos explícitos.
+- `calendar_days&days=7|14|30`: requiere `temporal_basis` ISO con timezone
+  comprobada. Opcional `end_day`; por defecto termina en el último bucket del
+  mercado. Son buckets nominales de 86400 segundos del reloj del addon; una
+  sesión puede seguir escribiendo en el índice anterior. No implica actualidad.
+
+La base conocida se envía con URL encoding (por ejemplo, `+` como `%2B`); también
+se acepta el sufijo `Z`. No se asignan fechas a una base desconocida. Un calendario
+fuera de rango devuelve 422; los mismos índices siguen disponibles por rango.
+
+Las métricas describen mínimos **guardados**, no el precio medio o máximo de todas
+las subastas. Desviación muestral y CV son dispersión de niveles, no volatilidad
+de retornos. Disponibilidad es un máximo por bucket: no se suma como ventas o
+volumen. Ausencias son null; cero requiere evidencia explícita.
+
+La cobertura divide buckets del item con dato por posiciones seleccionadas;
+en `observed_buckets` el denominador contiene solamente los buckets seleccionados
+del mercado. Los huecos entre índices se cuentan aparte. Muestras menores de
+siete precios generan una advertencia, sin otorgar confianza estadística al
+alcanzar siete. Los estados de cálculo son `ok`, `no_data`, `insufficient_data`
+y `undefined`, con motivo y valor null cuando corresponde.
+
+Errores: 422 para selección/ventana inválida, 404 para contexto inexistente,
+409 para evidencia incoherente y 503 para base no disponible. Un manifest
+malformado de un export seleccionado devuelve 409; el descubrimiento no lo
+interpreta como indisponibilidad ni afecta items sin relación con ese export.
+Los tests usan
+exclusivamente la base dedicada y esquemas aleatorios descritos en la sección 9.
+La compatibilidad con SavedVariables auténticos, fracciones ModernAH y codec
+nativo sigue pendiente; no se amplió el alcance del parser.
 
 ## Principio guia
 
