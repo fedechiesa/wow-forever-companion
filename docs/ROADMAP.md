@@ -186,15 +186,65 @@ o recomendaciones automáticas complejas.
 
 ## Fase 4: UI usable
 
+Estado: MVP 4A y simplificación 4A.1 implementados; oportunidades y ampliaciones pendientes.
+[Validación y límites](PHASE_4A_VALIDATION.md).
+
 Objetivo: tener una experiencia minima para explorar el mercado.
+
+### Fase 4A: primer dashboard React
+
+Implementado:
+
+- React + TypeScript + Vite con estilo dark fantasy responsive, CSS y SVG locales.
+- Dataset/mercado/región, búsqueda por ID/variante y catálogo paginado real.
+- Descubrimiento paginado de fuentes, modos y bases; selección explícita de export.
+- Histórico de mínimos guardados con índices originales y cortes por ausencia.
+- Promedio, mediana, cambios, pendiente y disponibilidad provenientes de FastAPI.
+- Cobertura, avisos, SIMULATED, trazabilidad por bucket y métricas no calculables.
+- Decimal exacto desplegable y conversión monetaria sin pérdida de fracciones.
+- Ventanas compatibles con backend, cancelación, loading, error, vacío y reintentos.
+- Tipos/esquemas generados desde OpenAPI, validación runtime y tests de frontend.
+
+Verificado: build de producción, tests de precisión/contratos/componentes,
+integración de lectura PvE simulado con 30 buckets y estados vacío/404/422.
+La revisión visual/interactiva en navegador queda pendiente por disponibilidad
+del entorno. La DB local no tiene exports sellados ni bases calendario verificadas;
+su selección se valida con fixtures y contratos, conservando los datos existentes.
+
+### Fase 4A.1: navegación simplificada
+
+Implementado sobre 4A sin cambiar backend, contratos, DB o identidad visual:
+
+- Flujo mercado → item → resultados automáticos en una única pantalla.
+- Cambio de mercado conservando el item si está disponible en su nuevo catálogo.
+- Contexto accumulated único como default seguro; elección explícita para
+  múltiples fuentes/bases y para cualquier export, sin ordenar por recepción.
+- Ventana inicial de 30 buckets observados; muestras menores conservan avisos.
+- Opciones avanzadas colapsadas: dataset, fuente, modo, base temporal,
+  exportación, ventanas, cantidad e índices.
+- Conservación de filtros explícitos compatibles y restablecimiento con aviso.
+- Cancelación, descarte de respuestas antiguas y debounce de edición;
+  supresión de requests cancelados por replay de efectos de StrictMode.
+- Dispersión y cambios de disponibilidad desplegables, desde métricas de FastAPI.
+
+Correcciones de auditoría: rango inicial inclusivo de hasta 366 posiciones,
+inspección SVG por punto más cercano, etiquetas de eje distintas y pruebas de
+App montado con jsdom como dependencia de desarrollo, sin nuevo framework.
+
+Validado: 52 tests frontend (42 de contratos/componentes y 10 montados),
+4 de integración real de lectura y build de producción. Diseño aprobado en
+revisión visual manual. Los tests DOM no incluyen layout real de navegador;
+SavedVariables auténticos de Forever sigue sin validación.
+[Detalle de 4A.1](PHASE_4A1_VALIDATION.md).
+
+### Alcance total de Fase 4
 
 Entregables previstos:
 
-- Lista/busqueda de items.
-- Vista de detalle de item.
-- Histórico de mínimos guardados y disponibilidad máxima, con cobertura y calidad.
-- Panel de oportunidades.
-- Filtros por mercado, dataset, fuente, base temporal, modo y ventana; oportunidades tras 3B.
+- Lista/búsqueda por clave y detalle del item: implementados en 4A.
+- Histórico de mínimos guardados y disponibilidad máxima, cobertura y calidad: implementados en 4A.
+- Filtros por mercado, dataset, fuente, base temporal, modo y ventana: implementados en 4A.
+- Panel de oportunidades: pendiente, depende de Fase 3B.
 
 Criterio de salida:
 

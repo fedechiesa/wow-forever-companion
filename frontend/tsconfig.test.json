@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "noEmit": false,
+    "rootDir": "src",
+    "incremental": false
+  },
+  "include": [
+    "src/api/client.ts",
+    "src/features/market/MarketResults.tsx",
+    "src/features/market/ContextControls.tsx",
+    "src/features/market/WindowControls.tsx",
+    "src/features/market/query.ts",
+    "src/features/market/selection.ts",
+    "src/features/market/resource.ts",
+    "src/features/market/AdvancedOptions.tsx",
+    "src/features/market/ContextChoice.tsx",
+    "src/features/market/ItemList.tsx",
+    "src/components/StatusPanel.tsx"
+  ]
+}

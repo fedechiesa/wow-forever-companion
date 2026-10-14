@@ -1,0 +1,1055 @@
+{
+  "MarketMetricsResponse": {
+    "properties": {
+      "analysis_version": {
+        "type": "string",
+        "const": "3a-v1",
+        "title": "Analysis Version",
+        "default": "3a-v1"
+      },
+      "decimal_precision": {
+        "type": "integer",
+        "const": 40,
+        "title": "Decimal Precision",
+        "default": 40
+      },
+      "context": {
+        "$ref": "#/components/schemas/SeriesContext"
+      },
+      "window": {
+        "$ref": "#/components/schemas/ResolvedWindow"
+      },
+      "points": {
+        "items": {
+          "$ref": "#/components/schemas/BucketPoint"
+        },
+        "type": "array",
+        "maxItems": 366,
+        "title": "Points"
+      },
+      "metrics": {
+        "$ref": "#/components/schemas/MarketMetrics"
+      },
+      "coverage": {
+        "$ref": "#/components/schemas/CoverageSummary"
+      },
+      "quality": {
+        "$ref": "#/components/schemas/QualitySummary"
+      },
+      "provenance": {
+        "$ref": "#/components/schemas/ProvenanceSummary"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "context",
+      "window",
+      "points",
+      "metrics",
+      "coverage",
+      "quality",
+      "provenance"
+    ],
+    "title": "MarketMetricsResponse"
+  },
+  "SeriesContext": {
+    "properties": {
+      "market_id": {
+        "type": "integer",
+        "maximum": 9.223372036854776e+18,
+        "exclusiveMinimum": 0.0,
+        "title": "Market Id"
+      },
+      "item_key": {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Item Key"
+      },
+      "source_id": {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Source Id"
+      },
+      "source_type": {
+        "type": "string",
+        "enum": [
+          "auctionator",
+          "simulated"
+        ],
+        "title": "Source Type"
+      },
+      "temporal_basis": {
+        "type": "string",
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Temporal Basis"
+      },
+      "series_mode": {
+        "type": "string",
+        "enum": [
+          "accumulated",
+          "export"
+        ],
+        "title": "Series Mode"
+      },
+      "export_id": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "exclusiveMinimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Export Id"
+      },
+      "market_key": {
+        "type": "string",
+        "title": "Market Key"
+      },
+      "ruleset": {
+        "type": "string",
+        "enum": [
+          "PvE",
+          "PvP",
+          "HC",
+          "RP"
+        ],
+        "title": "Ruleset"
+      },
+      "region": {
+        "type": "string",
+        "title": "Region"
+      },
+      "dataset": {
+        "type": "string",
+        "enum": [
+          "real",
+          "simulated"
+        ],
+        "title": "Dataset"
+      },
+      "external_item_id": {
+        "type": "string",
+        "title": "External Item Id"
+      },
+      "key_kind": {
+        "type": "string",
+        "enum": [
+          "item",
+          "gear_level",
+          "gear_suffix",
+          "pet"
+        ],
+        "title": "Key Kind"
+      },
+      "source_version": {
+        "type": "string",
+        "const": "340",
+        "title": "Source Version",
+        "default": "340"
+      },
+      "database_version": {
+        "type": "integer",
+        "const": 8,
+        "title": "Database Version",
+        "default": 8
+      },
+      "value_semantics": {
+        "type": "string",
+        "enum": [
+          "accumulated_extreme",
+          "export_projection"
+        ],
+        "title": "Value Semantics"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "market_id",
+      "item_key",
+      "source_id",
+      "source_type",
+      "temporal_basis",
+      "series_mode",
+      "market_key",
+      "ruleset",
+      "region",
+      "dataset",
+      "external_item_id",
+      "key_kind",
+      "value_semantics"
+    ],
+    "title": "SeriesContext"
+  },
+  "ResolvedWindow": {
+    "properties": {
+      "spec": {
+        "$ref": "#/components/schemas/WindowSpec"
+      },
+      "anchor_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Anchor Day"
+      },
+      "market_first_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Market First Day"
+      },
+      "market_last_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Market Last Day"
+      },
+      "start_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start Day"
+      },
+      "end_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End Day"
+      },
+      "positions": {
+        "items": {
+          "type": "integer",
+          "maximum": 2147483647.0,
+          "minimum": 0.0
+        },
+        "type": "array",
+        "maxItems": 366,
+        "title": "Positions"
+      },
+      "requested_position_count": {
+        "type": "integer",
+        "title": "Requested Position Count"
+      },
+      "calendar_start": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Calendar Start"
+      },
+      "calendar_end_exclusive": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Calendar End Exclusive"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "spec",
+      "anchor_day",
+      "market_first_day",
+      "market_last_day",
+      "start_day",
+      "end_day",
+      "positions",
+      "requested_position_count"
+    ],
+    "title": "ResolvedWindow"
+  },
+  "WindowSpec": {
+    "properties": {
+      "window_type": {
+        "type": "string",
+        "enum": [
+          "observed_buckets",
+          "index_range",
+          "calendar_days"
+        ],
+        "title": "Window Type"
+      },
+      "size": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 366.0,
+            "minimum": 1.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Size"
+      },
+      "start_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start Day"
+      },
+      "end_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End Day"
+      },
+      "days": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "enum": [
+              7,
+              14,
+              30
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Days"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "window_type"
+    ],
+    "title": "WindowSpec"
+  },
+  "BucketPoint": {
+    "properties": {
+      "scan_day": {
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 0.0,
+        "title": "Scan Day"
+      },
+      "bucket_start": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Bucket Start"
+      },
+      "market_observed": {
+        "type": "boolean",
+        "title": "Market Observed"
+      },
+      "daily_minimum": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Daily Minimum"
+      },
+      "daily_highest_minimum": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Daily Highest Minimum"
+      },
+      "daily_max_available": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Daily Max Available"
+      },
+      "minimum_origin": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "l",
+              "h_fallback",
+              "unknown"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Minimum Origin"
+      },
+      "minimum_evidence": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/EvidenceReference"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "highest_minimum_evidence": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/EvidenceReference"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "availability_evidence": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/EvidenceReference"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "scan_day",
+      "market_observed"
+    ],
+    "title": "BucketPoint"
+  },
+  "EvidenceReference": {
+    "properties": {
+      "table": {
+        "type": "string",
+        "enum": [
+          "partial_observations",
+          "partial_export_facts"
+        ],
+        "title": "Table"
+      },
+      "row_id": {
+        "type": "integer",
+        "maximum": 9.223372036854776e+18,
+        "exclusiveMinimum": 0.0,
+        "title": "Row Id"
+      },
+      "first_import_id": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "exclusiveMinimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "First Import Id"
+      },
+      "last_import_id": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "exclusiveMinimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Last Import Id"
+      },
+      "native_field": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "l",
+              "h",
+              "a"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Native Field"
+      },
+      "original_item_key": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Original Item Key"
+      },
+      "original_day_key": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Original Day Key"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "table",
+      "row_id"
+    ],
+    "title": "EvidenceReference"
+  },
+  "MarketMetrics": {
+    "properties": {
+      "minimum_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "mean_daily_minimum_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "median_daily_minimum_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "first_minimum_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "last_minimum_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "price_change_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "price_change_pct": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "minimum_stddev_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "minimum_cv_pct": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "trend_copper_per_scan_index": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "first_max_available": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "last_max_available": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "availability_change_units": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "availability_change_pct": {
+        "$ref": "#/components/schemas/MetricValue"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "minimum_copper",
+      "mean_daily_minimum_copper",
+      "median_daily_minimum_copper",
+      "first_minimum_copper",
+      "last_minimum_copper",
+      "price_change_copper",
+      "price_change_pct",
+      "minimum_stddev_copper",
+      "minimum_cv_pct",
+      "trend_copper_per_scan_index",
+      "first_max_available",
+      "last_max_available",
+      "availability_change_units",
+      "availability_change_pct"
+    ],
+    "title": "MarketMetrics"
+  },
+  "MetricValue": {
+    "properties": {
+      "value": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Value"
+      },
+      "unit": {
+        "type": "string",
+        "title": "Unit"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "no_data",
+          "insufficient_data",
+          "undefined"
+        ],
+        "title": "Status"
+      },
+      "reason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reason"
+      },
+      "observation_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Observation Count"
+      },
+      "first_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "First Day"
+      },
+      "last_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Last Day"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "value",
+      "unit",
+      "status",
+      "observation_count"
+    ],
+    "title": "MetricValue"
+  },
+  "CoverageSummary": {
+    "properties": {
+      "selected_position_count": {
+        "type": "integer",
+        "title": "Selected Position Count"
+      },
+      "observed_market_bucket_count": {
+        "type": "integer",
+        "title": "Observed Market Bucket Count"
+      },
+      "price_observation_count": {
+        "type": "integer",
+        "title": "Price Observation Count"
+      },
+      "availability_observation_count": {
+        "type": "integer",
+        "title": "Availability Observation Count"
+      },
+      "missing_price_position_count": {
+        "type": "integer",
+        "title": "Missing Price Position Count"
+      },
+      "missing_availability_position_count": {
+        "type": "integer",
+        "title": "Missing Availability Position Count"
+      },
+      "index_span_position_count": {
+        "type": "integer",
+        "title": "Index Span Position Count"
+      },
+      "unobserved_market_position_count": {
+        "type": "integer",
+        "title": "Unobserved Market Position Count"
+      },
+      "price_ratio": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "availability_ratio": {
+        "$ref": "#/components/schemas/MetricValue"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "selected_position_count",
+      "observed_market_bucket_count",
+      "price_observation_count",
+      "availability_observation_count",
+      "missing_price_position_count",
+      "missing_availability_position_count",
+      "index_span_position_count",
+      "unobserved_market_position_count",
+      "price_ratio",
+      "availability_ratio"
+    ],
+    "title": "CoverageSummary"
+  },
+  "QualitySummary": {
+    "properties": {
+      "warnings": {
+        "items": {
+          "$ref": "#/components/schemas/QualityWarning"
+        },
+        "type": "array",
+        "title": "Warnings"
+      },
+      "minimum_l_count": {
+        "type": "integer",
+        "title": "Minimum L Count"
+      },
+      "minimum_h_fallback_count": {
+        "type": "integer",
+        "title": "Minimum H Fallback Count"
+      },
+      "minimum_unknown_origin_count": {
+        "type": "integer",
+        "title": "Minimum Unknown Origin Count"
+      },
+      "availability_field_presence": {
+        "type": "string",
+        "enum": [
+          "present",
+          "absent",
+          "unknown"
+        ],
+        "title": "Availability Field Presence"
+      },
+      "sample_warning_threshold": {
+        "type": "integer",
+        "const": 7,
+        "title": "Sample Warning Threshold",
+        "default": 7
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "warnings",
+      "minimum_l_count",
+      "minimum_h_fallback_count",
+      "minimum_unknown_origin_count",
+      "availability_field_presence"
+    ],
+    "title": "QualitySummary"
+  },
+  "QualityWarning": {
+    "properties": {
+      "code": {
+        "type": "string",
+        "title": "Code"
+      },
+      "message": {
+        "type": "string",
+        "title": "Message"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "code",
+      "message"
+    ],
+    "title": "QualityWarning"
+  },
+  "ProvenanceSummary": {
+    "properties": {
+      "selected_daily_row_count": {
+        "type": "integer",
+        "title": "Selected Daily Row Count"
+      },
+      "excluded_undated_count": {
+        "type": "integer",
+        "title": "Excluded Undated Count"
+      },
+      "undated_count_scope": {
+        "type": "string",
+        "const": "selected_item_context_all_indices",
+        "title": "Undated Count Scope",
+        "default": "selected_item_context_all_indices"
+      },
+      "referenced_import_ids": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array",
+        "title": "Referenced Import Ids"
+      },
+      "export_state_hash": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Export State Hash"
+      },
+      "first_received_at": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "First Received At"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "selected_daily_row_count",
+      "excluded_undated_count",
+      "referenced_import_ids"
+    ],
+    "title": "ProvenanceSummary"
+  },
+  "SeriesDiscoveryResponse": {
+    "properties": {
+      "series": {
+        "items": {
+          "$ref": "#/components/schemas/SeriesDescriptor"
+        },
+        "type": "array",
+        "title": "Series"
+      },
+      "limit": {
+        "type": "integer",
+        "title": "Limit"
+      },
+      "offset": {
+        "type": "integer",
+        "title": "Offset"
+      },
+      "has_more": {
+        "type": "boolean",
+        "title": "Has More"
+      },
+      "ordering": {
+        "type": "string",
+        "const": "mode_source_basis_export_id; not observation chronology",
+        "title": "Ordering",
+        "default": "mode_source_basis_export_id; not observation chronology"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "series",
+      "limit",
+      "offset",
+      "has_more"
+    ],
+    "title": "SeriesDiscoveryResponse"
+  },
+  "SeriesDescriptor": {
+    "properties": {
+      "context": {
+        "$ref": "#/components/schemas/SeriesContext"
+      },
+      "item_first_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Item First Day"
+      },
+      "item_last_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Item Last Day"
+      },
+      "market_first_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Market First Day"
+      },
+      "market_last_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Market Last Day"
+      },
+      "excluded_undated_count": {
+        "type": "integer",
+        "title": "Excluded Undated Count"
+      },
+      "availability_field_presence": {
+        "type": "string",
+        "enum": [
+          "present",
+          "absent",
+          "unknown"
+        ],
+        "title": "Availability Field Presence"
+      },
+      "first_received_at": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "First Received At"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "context",
+      "item_first_day",
+      "item_last_day",
+      "market_first_day",
+      "market_last_day",
+      "excluded_undated_count",
+      "availability_field_presence"
+    ],
+    "title": "SeriesDescriptor"
+  }
+}

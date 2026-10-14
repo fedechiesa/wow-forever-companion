@@ -417,6 +417,33 @@ traps externos. No se redondea silenciosamente a copper ni se devuelve NaN/Infin
 Mediana/promedio dan el mismo peso a cada bucket con precio. Disponibilidad no es
 volumen transaccionado. Dispersión de niveles no es volatilidad de retornos.
 
+## Dashboard implementado en Fases 4A y 4A.1
+
+React + TypeScript + Vite consulta `GET /partial/markets`, `GET /partial/items`,
+`GET /market/series` y `GET /market/metrics`. El flujo principal es mercado →
+item → resultados automáticos; las opciones avanzadas conservan los filtros
+compatibles de dataset, fuente, modo, base temporal y ventana. Un único contexto
+accumulated compatible puede elegirse automáticamente; los contextos ambiguos
+y todas las exportaciones requieren selección explícita, sin ordenar observaciones
+por fecha de recepción. La ventana inicial usa 30 buckets observados del mercado.
+
+El acceso HTTP y la validación de respuestas viven en `frontend/src/api`; la
+selección de contexto, transformación y presentación en `frontend/src/features/market`.
+Las métricas provienen de FastAPI, sin duplicar cálculos estadísticos en React.
+Las peticiones canceladas no pueden publicar respuestas obsoletas. La URL pública
+del backend se configura mediante `VITE_API_BASE_URL`, sin secretos en el bundle.
+
+Los Decimal conservan sus strings y la conversión de moneda usa BigInt. El gráfico
+SVG conserva huecos y ceros, permite inspección con pointer y teclado y ofrece
+tabla accesible. La interfaz muestra mínimos históricos guardados, disponibilidad
+máxima, cobertura, advertencias y SIMULATED cuando corresponde; no los interpreta
+como precios actuales ni ventas. Los índices sin base verificada no se muestran
+como fechas calendario. No se implementan oportunidades, carga de archivos ni IA
+en estas fases. La validación con SavedVariables auténticos de Forever sigue pendiente.
+
+Ver [validación de 4A](PHASE_4A_VALIDATION.md) y
+[simplificación y correcciones de 4A.1](PHASE_4A1_VALIDATION.md).
+
 ## Contrato de snapshot completo de Fase 2
 
 El adaptador de snapshots completos produce una estructura equivalente a:

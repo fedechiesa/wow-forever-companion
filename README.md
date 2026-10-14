@@ -28,7 +28,7 @@ Fuera de alcance para v0.1:
 
 ## Stack
 
-- Frontend: React.
+- Frontend: React + TypeScript + Vite, dashboard de Market Intelligence.
 - Backend: Python + FastAPI.
 - Database: PostgreSQL.
 - Control de versiones: Git/GitHub.
@@ -114,10 +114,28 @@ npm run dev
 La app queda disponible en:
 
 ```text
-http://127.0.0.1:5173/
+http://localhost:5173/
 ```
 
-El frontend muestra una pantalla tecnica minima y comprueba que el backend este disponible. El backend ya importa y consulta snapshots simulados de Fase 2; el frontend todavia no incluye una UI de Auction House.
+El dashboard de Fases 4A/4A.1 usa el flujo **mercado → item → resultados**.
+Elegí un mercado disponible y un item: su histórico, métricas, disponibilidad
+y calidad se cargan automáticamente. Un único historial `accumulated` compatible
+se selecciona de forma segura; si hay varias fuentes o bases posibles, la app
+pide elegir un historial. Ninguna exportación se selecciona automáticamente.
+
+**Opciones avanzadas**, cerrada al inicio, conserva dataset, fuente, modo,
+base temporal, exportación y todas las ventanas de análisis anteriores.
+Los filtros compatibles se conservan al cambiar de item. Los incompatibles
+se restablecen con aviso visible, sin mezclar contextos.
+Al cambiar de mercado, el item seleccionado se conserva si el nuevo catálogo
+lo incluye; en caso contrario se limpia con aviso y se pide elegir otro.
+
+`VITE_API_BASE_URL` configura la URL pública del backend en tiempo de build
+(default `http://localhost:8000`); nunca debe contener secretos. FastAPI permite
+por defecto el origen `http://localhost:5173`: usar `127.0.0.1` en la barra del
+navegador requiere agregar ese origen en `FRONTEND_ORIGINS` del `.env` local del
+backend y reiniciarlo. Vite fija puerto 5173 para evitar un cambio de origen
+silencioso. Para preview/otro despliegue, configurar su origen explícitamente.
 
 ### 5. Validaciones utiles
 
@@ -131,6 +149,12 @@ Invoke-RestMethod http://127.0.0.1:8000/health/db
 # Frontend compila
 cd frontend
 npm run build
+
+# Precisión, contratos, ventanas, paginación y componentes (sin DB)
+npm test
+
+# Integración de lectura: requiere FastAPI y PvE simulado ya almacenado
+npm run test:live
 ```
 
 ### 6. Ejecutar migraciones
@@ -426,6 +450,70 @@ Los tests usan
 exclusivamente la base dedicada y esquemas aleatorios descritos en la sección 9.
 La compatibilidad con SavedVariables auténticos, fracciones ModernAH y codec
 nativo sigue pendiente; no se amplió el alcance del parser.
+
+## Fases 4A y 4A.1: dashboard React
+
+- Diseño oscuro responsive, acentos dorados/bronce, tipografías del sistema y
+  gráfico SVG local. Sin nuevas dependencias de runtime ni assets externos.
+  Las pruebas de App montado usan jsdom 26.1.0 como dependencia de desarrollo,
+  junto al runner Node y React DOM existentes.
+- Catálogo paginado de `/partial/items` y búsqueda local por ID/variante sobre
+  todos los items cargados. La API parcial no provee nombres; no se inventan.
+- Dataset y mercado/región explícitos desde `/partial/markets`; contextos
+  paginados desde `/market/series`. Ningún export se elige automáticamente;
+  recepción e ID no se usan como cronología de observación.
+- Exploración principal: mercado e item, con resultados automáticos. Dataset
+  filtra la lista de mercados desde Opciones avanzadas; al inicio se muestran
+  todos los mercados con región, reglas y SIMULATED/REAL diferenciados.
+- Se prioriza el único contexto accumulated compatible, o una elección explícita
+  previa que siga siendo válida. Varios accumulated entre fuentes/bases exigen
+  elección; incluso un único export necesita selección explícita. Un default
+  automático no se convierte en una preferencia de fuente para futuros items.
+- `/market/metrics` proporciona puntos, promedio/mediana de mínimos, variación,
+  pendiente, disponibilidad, cobertura, advertencias y procedencia. React no
+  recalcula estadísticas. Gráfico por índices reales, con cortes en ausencias
+  y saltos; ceros explícitos conservados. Tabla accesible con referencias.
+- Ventanas: 1..366 buckets observados, rango inclusivo de hasta 366 índices,
+  o 7/14/30 días con base temporal verificada. Ancla opcional por índice;
+  el default pertenece al mercado/contexto, no a hoy. La consulta inicial solicita
+  30 buckets observados, también con base conocida; menos datos conservan los
+  avisos de cobertura. Los controles avanzados permiten cambiar esta ventana.
+  El rango inicial termina en el último índice y ocupa como máximo 366 posiciones;
+  un rango explícito mayor se rechaza con aviso, sin recortarlo.
+- Mouse/touch inspeccionan el punto más cercano en el SVG, con desempate por
+  índice menor; teclado y tabla conservan acceso a cada bucket. El eje vertical
+  utiliza etiquetas copper enteras distintas incluso con precios cero/constantes.
+- Los Decimal siguen siendo strings. Las abreviaturas con `…` indican
+  truncamiento y se despliega el valor completo. La conversión oro/plata/cobre
+  usa BigInt y conserva todas las fracciones de copper de la respuesta.
+- Loading, reintento de conexión, vacíos y contexto inválido/incoherente.
+  Las peticiones se cancelan al cambiar selección y sus resultados anteriores
+  se ocultan. SIMULATED permanece visible en dataset y resultados.
+
+Los contratos de respuesta del motor se generan desde OpenAPI, con tipos y
+validación runtime. `/partial` no declara modelos de respuesta en OpenAPI:
+sus tipos se basan en SQL/migración 003 y respuestas reales inspeccionadas.
+Para comprobar o regenerar contratos, desde `frontend`:
+
+```powershell
+..\backend\.venv\Scripts\python.exe scripts\generate-api-contracts.py --check
+# Después de un cambio intencional de API, regenerar sin --check.
+```
+
+Flujo con los datos existentes: `PvE · simulation · SIMULATED` → item
+`1900000000` → resultados automáticos. Internamente se conserva fuente
+`fresh-seed-340 · simulated`, modo `accumulated`, base `unknown` y 30 buckets.
+Opciones avanzadas permite reproducir las consultas técnicas de 4A; no hay
+botón obligatorio de consulta. Los cambios válidos actualizan los resultados
+automáticamente, con debounce de 200 ms y cancelación de respuestas obsoletas.
+No hay importación ni modificación de datos desde el dashboard o `test:live`.
+Para otra URL de prueba: definir `TEST_API_BASE_URL` (no cambia la URL de Vite).
+
+Validación original: [PHASE_4A_VALIDATION.md](docs/PHASE_4A_VALIDATION.md).
+Simplificación y validación actual: [PHASE_4A1_VALIDATION.md](docs/PHASE_4A1_VALIDATION.md).
+Oportunidades 3B, IA y alertas siguen pendientes. El diseño actual fue aprobado
+en revisión visual manual. Las pruebas montadas verifican eventos y efectos en
+jsdom; no sustituyen el layout de un navegador o las pruebas en un dispositivo touch.
 
 ## Principio guia
 
