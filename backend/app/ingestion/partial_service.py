@@ -13,6 +13,13 @@ from app.ingestion.native_exports import NativeExportEvidence
 class PartialIngestionService:
     deadlock_attempts = 3
 
+    def __init__(self, connection_factory=None, *, redact_errors=False):
+        self._connection_factory = connection_factory
+        self._redact_errors = redact_errors
+
+    def _connect(self):
+        return (self._connection_factory or connect)()
+
     def import_batch(self, result: PartialAdapterResult) -> PartialImportResult:
         if not re.fullmatch(r"[0-9a-f]{64}", result.source_hash):
             raise ValueError("source_hash must be SHA-256")
@@ -38,8 +45,9 @@ class PartialIngestionService:
     def _record_failure(self, result, error):
         # Data and the attempted completed run have already rolled back.
         try:
-            with connect() as connection:
-                self._create_run(connection, result, "failed", str(error))
+            with self._connect() as connection:
+                message = "Trial import failed; database details withheld." if self._redact_errors else str(error)
+                self._create_run(connection, result, "failed", message)
         except psycopg.Error:
             pass
 
@@ -63,7 +71,7 @@ class PartialIngestionService:
 
     def _import_batch(self, result):
         b = result.batch
-        with connect() as connection:
+        with self._connect() as connection:
             with connection.transaction():
                 run_id = self._create_run(connection, result, "completed")
                 # Global phases: items, markets, native export, observations, link.

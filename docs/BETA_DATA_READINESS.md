@@ -1,10 +1,10 @@
 # Preparación de datos para la beta del 19/10/2026
 
-Fecha de revisión: **2026-10-15**, America/Buenos_Aires. HEAD inspeccionado: `85bd0e127b142aadfdce2ba73a552039c0067c94`, rama `main`.
+Fecha de revisión: **2026-10-15**, America/Buenos_Aires. Investigación original sobre `85bd0e1`; actualización de seguridad sobre `4b93efc`, rama `main`, sin commit de implementación todavía.
 
 **Estado: preparados para intentar captura y validación offline; NO GO todavía para usar datos auténticos en análisis de mercado.** No se recibió ni validó un SavedVariables real de Forever. El 19/10/2026 es la fecha de captura prevista por el usuario; este documento no verifica el calendario oficial ni la disponibilidad de la beta.
 
-Alcance de esta tarea: revisión y procedimiento. No se ejecutaron tests, importaciones, migraciones, servicios, consultas a PostgreSQL ni scripts del addon. No se modificaron código, tests, datos o documentos previos; no hubo commit ni push. Todos los comandos posteriores son instrucciones para una ejecución futura, no resultados obtenidos.
+La entrega documental original no ejecutó tests ni operaciones en PostgreSQL. La actualización de seguridad sí agrega un modo de ensayo y pruebas con fixtures, exclusivamente en un laboratorio nuevo; sus resultados están en la sección 13. No se obtuvo un SavedVariables auténtico ni se alteraron datos existentes de desarrollo/tests. Los comandos de captura/importación de datos reales siguen siendo instrucciones para una ejecución futura.
 
 ## 1. Estado actual del pipeline y evidencia revisada
 
@@ -21,14 +21,14 @@ Copia SavedVariables -> AuctionatorAdapter (sin BD)
 | [Adaptador](../backend/app/ingestion/adapters/auctionator.py), [lector Lua/CBOR](../backend/app/ingestion/saved_variables.py) | Parsing de literales limitado, sin intérprete Lua ni conexión a BD; carga del archivo completo con límite |
 | [Contratos parciales](../backend/app/ingestion/partial_contracts.py), [claves](../backend/app/ingestion/auctionator_keys.py) | Validación de contexto, tipo, variantes, enteros y semántica temporal |
 | [Evidencia nativa](../backend/app/ingestion/native_exports.py) | Hechos presentes, claves originales y manifest de estructura/presencia; proyección de mínimos explícita |
-| [Servicio](../backend/app/ingestion/partial_service.py), migraciones [003](../backend/migrations/003_create_partial_observations.sql) y [004](../backend/migrations/004_create_partial_export_evidence.sql) | Transacciones, idempotencia, separación de contexto y evidencia sellada/append-only |
-| [CLI](../backend/scripts/import_auctionator.py) | **No tiene dry-run:** después de parsear siempre llama al servicio de persistencia |
-| [Conexión](../backend/app/db/connection.py), [configuración](../backend/app/core/config.py) | La aplicación/CLI usan `DATABASE_URL`. `TEST_DATABASE_URL` no redirige por sí sola una importación |
+| [Servicio](../backend/app/ingestion/partial_service.py), migraciones [003](../backend/migrations/003_create_partial_observations.sql) y [004](../backend/migrations/004_create_partial_export_evidence.sql) | Transacciones, idempotencia y evidencia sellada. Factory opcional de conexiones para que import, retries y registro de fallos usen el destino verificado |
+| [CLI](../backend/scripts/import_auctionator.py) | Ruta ordinaria preservada. Nuevo `--trial` con selección explícita; `--check-target` verifica identidad sin parsear archivo ni persistir. No hay dry-run del archivo completo en CLI: usar el adaptador offline |
+| [Conexión](../backend/app/db/connection.py), [configuración](../backend/app/core/config.py), [guard de ensayo](../backend/app/db/trial.py) | Ordinario usa `DATABASE_URL`. Ensayo compara su identidad efectiva con el destino seleccionado; no cambia settings ni usa automáticamente `TEST_DATABASE_URL` |
 | [API parcial](../backend/app/api/partial.py), [contratos de mercado](../backend/app/market/contracts.py), [servicio analítico](../backend/app/market/service.py) | Consulta por contexto explícito; análisis en transacción READ ONLY, REPEATABLE READ |
 
 Se contrastaron código y tests del proyecto con la semántica registrada en [AUCTIONATOR_340.md](AUCTIONATOR_340.md), [PHASE_25_EXPORT_EVIDENCE.md](PHASE_25_EXPORT_EVIDENCE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [PHASE_3A_VALIDATION.md](PHASE_3A_VALIDATION.md) y README. Las validaciones antiguas son evidencia histórica de fixtures y PostgreSQL, no resultados de esta revisión ni soporte demostrado del cliente de beta actual. Los fixtures construidos que se llaman `real` prueban segregación del contrato, no autenticidad de datos de Forever.
 
-Cobertura existente inspeccionada, sin volver a ejecutarla:
+Cobertura inspeccionada en la entrega original; las suites repetidas durante la actualización se identifican en la sección 13:
 
 | Suite | Casos relevantes |
 | --- | --- |
@@ -215,43 +215,69 @@ Conservar salida, tipo de error y fase en un log privado. Recalcular el hash de 
 
 Resultados incompatibles: detenerse, conservar bytes/contexto y documentar la forma encontrada; no probar parsers permisivos, quitar globals, cambiar versión, redondear valores, reducir límites o convertir a HTTP para forzar aceptación. Resolver la incompatibilidad requeriría otra tarea con evidencia y alcance de soporte explícito.
 
-## 8. Ensayo de persistencia aislado, posterior al GO offline
+## 8. Ensayo seguro con selección explícita del destino
 
-Este procedimiento futuro sí escribe **únicamente en un laboratorio separado**. No se ejecuta en esta entrega. La separación real/simulated dentro de desarrollo no reemplaza este laboratorio.
+La CLI ordinaria continúa usando `DATABASE_URL`. Para un ensayo se debe usar `--trial`; no sobrescribir DATABASE_URL ni cambiar `.env` para apuntar al laboratorio. Esa configuración identifica la base **protegida**, cuya identidad se consulta en modo READ ONLY. `TEST_DATABASE_URL` por sí sola no selecciona el destino; puede usarse como fuente del DSN sólo si se nombra expresamente con `--database-url-env`.
 
-1. Crear/provisionar una BD nueva exclusiva, por ejemplo `wow_forever_beta_20261019_test`, preferentemente con un rol que sólo pueda operar allí. No reutilizar la BD que contiene simulación ni una base de pruebas con otros trabajos. Registrar servidor/puerto/nombre/schema previstos; no imprimir el DSN o la contraseña.
-2. Antes de ejecutar herramientas de preparación, confirmar independientemente que el destino es nuevo/exclusivo y no contiene datos ajenos. En una terminal nueva ubicada en `backend`, dejar `DATABASE_URL` representando el desarrollo correcto para que la comparación de seguridad lo conozca. Configurar `TEST_DATABASE_URL` al laboratorio y ejecutar **sólo allí** `scripts/setup_test_database.py`: crea la base si falta y aplica las migraciones existentes 001–004. No crea una migración nueva del proyecto. Detenerse ante cualquier error.
-3. El [validador existente](../backend/scripts/setup_test_database.py) exige nombre terminado en `_test` y distinto del nombre de desarrollo. No garantiza por sí solo aislamiento de credenciales/servidor ni que la BD esté vacía. Confirmar destino, permisos y ausencia de tablas/datos ajenos antes de usarlo.
-4. Sólo después de provisionar y verificar, configurar `DATABASE_URL` de esa terminal al DSN del laboratorio. La CLI utiliza esa variable: **configurar únicamente TEST_DATABASE_URL no alcanza**. No modificar `.env` ni reiniciar el backend de desarrollo con ese destino. Cada proceso Python debe iniciarse después de seleccionar el entorno.
-5. Verificar mediante una conexión de lectura `current_database()`, schema/search_path y destino del servidor. Tomar un inventario basal de tablas y conteos; las tablas de snapshots completos deben estar vacías en el laboratorio. Si no coincide con el destino previsto, no importar.
-6. Ejecutar la CLI con la copia inmutable, `--dataset real`, fuente y región verificadas. Añadir mapping/LibCBOR sólo si la etapa offline los aprobó. Omitir `--scan-day-zero` mientras sea unknown. No existe `--dry-run`.
+### Condiciones previas y comprobación real
 
-Ejemplo de selección del destino, con DSN privado real a completar; no ejecutar los imports si falla un paso:
+1. Provisionar una base dedicada a ensayos, con nombre sencillo terminado en `_test`, distinta de desarrollo. La CLI no crea bases, no aplica migraciones y no limpia registros. Antes de importar debe tener las migraciones existentes 001–004, preparadas exclusivamente allí por un operador que haya verificado el destino. `setup_test_database.py` conserva su guard anterior basado en nombres: **no es sustituto** del nuevo guard de importación ni debe ejecutarse contra un destino incierto.
+2. Mantener DATABASE_URL en su valor habitual. La validación exige conexiones con host, port, dbname y user explícitos, un solo host y sin `service`, `options`, replicación o parámetros no admitidos. Se admiten password/passfile y opciones TLS listadas en el guard; no hay que incluir credenciales en argumentos.
+3. Se rechazan overlays de routing/sesión PGHOST, PGHOSTADDR, PGPORT, PGDATABASE, PGUSER, PGSERVICE, PGSERVICEFILE, PGOPTIONS, PGTARGETSESSIONATTRS y PGLOADBALANCEHOSTS. Usar una terminal limpia. Timeout de conexión: 3 s; statement_timeout: 15 s; lock_timeout: 5 s; search_path fijo public.
+4. Se consulta `pg_catalog.pg_control_system().system_identifier` y el OID de `pg_database` correspondiente a `current_database()` en **ambas conexiones reales**. El par clúster/OID debe ser diferente. Cambiar hostname, URL/conninfo o parámetros no permite eludirlo. Además se exige que el nombre efectivo coincida con `--expected-database`, y que el destino no está en recovery.
+5. Si desarrollo no es accesible o falta permiso para leer la identidad del clúster, se rechaza el ensayo. No hay fallback a comparar textos, nombres o direcciones IP. No se conceden permisos automáticamente. Un administrador debe revisar los privilegios mínimos si se usa un rol restringido.
+6. Antes de entregar cada escritor se vuelve a consultar **también la identidad protegida**, mediante una transacción READ ONLY en la conexión protegida conservada. Deben coincidir clúster/OID/nombre y estado de recovery con la lectura inicial. Si la conexión se pierde, queda ocupada, deja de ser READ ONLY o falla la consulta, se aborta; no se reconecta automáticamente la base protegida. La identidad del destino se comprueba dentro de la propia transacción que va a escribir: import, retry y registro de failed. Si cambia, se detiene antes de INSERT/nextval. Las reconexiones del destino deben conservar su identidad inicial y pasan otra vez por ambas comprobaciones; no hay fallback global.
+
+El alcance soportado es **PostgreSQL directo y estable, con un laboratorio confiable**. No se afirma soporte para PgBouncer, proxies que redistribuyan transacciones, balanceo entre clústeres ni cambios de routing/DNS/backend durante el ensayo. No existe una comprobación puntual que garantice el comportamiento futuro de un router arbitrario. Un único hostname tampoco demuestra conexión directa: el operador debe comprobar la topología. La revalidación detecta cambios observados; no convierte una topología dinámica en soportada.
+
+Como defensa complementaria, usar un rol exclusivo del laboratorio, sin permisos de escritura sobre desarrollo ni otras bases. La conexión protegida sólo necesita conexión y lectura de identidad, no DML sobre tablas. No usar superusuario como requisito del ensayo ni conceder pg_monitor por defecto. En PostgreSQL 16.15 local se comprobó EXECUTE para PUBLIC sobre pg_control_system(); otros servidores pueden restringirlo y entonces el guard rechaza el ensayo. Un administrador debe evaluar cualquier permiso mínimo necesario por separado. La CLI y estas pruebas no crean roles ni cambian permisos de las bases existentes.
+
+La identidad de clúster es una propiedad de PostgreSQL documentada en [Control Data Functions](https://www.postgresql.org/docs/16/functions-info.html#FUNCTIONS-PG-CONTROL). Clones físicos pueden compartir system_identifier y OIDs: el guard los rechaza conservadoramente si coinciden con la base protegida. No se puede certificar que un laboratorio está vacío o que sus datos sean descartables sólo por su nombre; eso sigue siendo una comprobación del operador. Los servidores y sus catálogos deben ser de confianza.
+
+### Comandos exactos, desde backend
+
+Con la base ya provisionada, seleccionar el DSN privado en una variable de entorno del proceso. No añadir BETA_TRIAL_DATABASE_URL a `.env`: no es un campo de Settings y continúa siendo una configuración no reconocida. El prompt protegido evita guardarlo como texto en el historial; no imprimir la variable. Reemplazar el nombre esperado por el de la base realmente creada:
 
 ```powershell
-# backend; DATABASE_URL todavia representa desarrollo en esta etapa.
-$env:TEST_DATABASE_URL = '<DSN privado del laboratorio dedicado terminado en _test>'
-.\.venv\Scripts\python.exe -B scripts/setup_test_database.py
-if ($LASTEXITCODE -ne 0) { throw 'Fallo la preparacion del laboratorio; no importar.' }
+$trialDsnSecret = Read-Host 'DSN privado del laboratorio (host/port/dbname/user explicitos)' -AsSecureString
+$env:BETA_TRIAL_DATABASE_URL = [System.Net.NetworkCredential]::new('', $trialDsnSecret).Password
+Remove-Variable trialDsnSecret
+$trialDatabaseName = 'wow_forever_beta_20261019_test'
+
+.\.venv\Scripts\python.exe -B scripts/import_auctionator.py --trial --database-url-env BETA_TRIAL_DATABASE_URL --expected-database $trialDatabaseName --check-target
+if ($LASTEXITCODE -ne 0) { throw 'Destino no verificado; no importar.' }
 ```
 
-Detener aquí la ejecución y completar las comprobaciones de destino, permisos, esquema y estado basal de los pasos anteriores. Sólo después, en esa misma terminal:
+`--check-target` no requiere archivo, source-id, región ni dataset; no parsea ni escribe datos. Su JSON contiene sólo nombre, OID de base y system_identifier, sin DSN/usuario/password. Comparar esos valores con los esperados del laboratorio y conservarlos en la hoja de ensayo. Para una comprobación independiente en una consola SQL conectada privadamente al laboratorio:
+
+```sql
+BEGIN READ ONLY;
+SELECT current_database(), d.oid AS database_oid, s.system_identifier,
+       inet_server_addr(), inet_server_port(), current_schema(),
+       current_setting('transaction_read_only')
+FROM pg_catalog.pg_database d CROSS JOIN pg_catalog.pg_control_system() s
+WHERE d.datname=current_database();
+ROLLBACK;
+```
+
+Comprobar asimismo migraciones, tablas y conteos del laboratorio. La comprobación de identidad es automática pero el cotejo con el laboratorio previsto es manual. El import vuelve a verificar todo: un check previo no es un permiso reutilizable para saltar la validación.
+
+Sólo después del GO offline y de destino, usando las BETA_COPY/BETA_SOURCE_ID/BETA_REGION de la sección 7:
 
 ```powershell
-$env:DATABASE_URL = $env:TEST_DATABASE_URL
-# Confirmar mediante lectura current_database()/schema del destino seleccionado.
-# No ejecutar la linea siguiente si esa comprobacion no coincide.
-.\.venv\Scripts\python.exe -B scripts/import_auctionator.py $env:BETA_COPY --source-id $env:BETA_SOURCE_ID --region $env:BETA_REGION --dataset real
-if ($LASTEXITCODE -ne 0) { throw 'Fallo el import; revisar logs y estado del laboratorio.' }
+.\.venv\Scripts\python.exe -B scripts/import_auctionator.py $env:BETA_COPY --source-id $env:BETA_SOURCE_ID --region $env:BETA_REGION --dataset real --trial --database-url-env BETA_TRIAL_DATABASE_URL --expected-database $trialDatabaseName
+if ($LASTEXITCODE -ne 0) { throw 'Ensayo fallido; conservar copia y revisar el laboratorio.' }
 ```
 
-Las BETA_* deben definirse también en esta terminal. Si la muestra necesitó mapping/LibCBOR, agregar los parámetros explícitos correspondientes al comando. Las revisiones manuales indicadas son condiciones de paso; pegar todo el bloque sin detenerse a verificarlas no constituye un ensayo seguro.
+Agregar `--market-map` y/o `--allow-libcbor` sólo cuando la validación offline los haya confirmado. Omitir `--scan-day-zero` si es unknown. Sin --trial, la llamada anterior seguiría la ruta ordinaria: **no omitir ese flag**. --database-url-env/--expected-database/--check-target sin --trial se rechazan. No es válido suministrar un DSN directamente a --database-url-env: el argumento debe ser el nombre de una variable.
+
+Al terminar, cerrar los procesos del laboratorio y retirar sólo la variable de destino de esa terminal (`Remove-Item Env:BETA_TRIAL_DATABASE_URL`). DATABASE_URL no se modifica. El DSN permanece como secreto del proceso mientras se usa; no es un almacén de secretos y no debe compartirse el entorno.
 
 En una BD nueva con evidencia aceptada, esperar `completed`, `evidence_status=created`, un `export_id` y conteo de hechos coincidente con el offline. Verificar sello, manifest y hechos persistidos; no exigir que el número de observaciones iguale el de hechos, porque un h puede originar una proyección adicional de mínimo.
 
 Reimportar **el mismo archivo con idéntico contexto**. Esperar `duplicate`, cero cambios acumulados y mismo export reutilizado; debe existir otra recepción/import y vínculo. Reimportar no significa “cero escrituras”: se audita la recepción. Un contexto diferente produce otra identidad y no sirve para demostrar idempotencia.
 
-Para inspeccionar API, iniciar un proceso FastAPI adicional sólo con el laboratorio, en un puerto diferente, y comprobar ese destino antes de consultar. No dirigir el dashboard habitual a una mezcla de bases. Consultas de lectura:
+La selección --trial afecta sólo a esta CLI, no a servidores FastAPI ya iniciados. Para inspeccionar API, usar otro proceso y otra terminal configurados exclusivamente para el laboratorio, en un puerto diferente, después de verificar ese destino. No cambiar DATABASE_URL en la terminal del ensayo: debe seguir identificando la base protegida. No dirigir el dashboard habitual a una mezcla de bases. Consultas de lectura:
 
 - `/partial/markets`: identificar mercado por región/clave/dataset real; no asumir IDs locales.
 - `/partial/items?market_id=...`: paginar con limit/offset; sólo lista items con observaciones. Items nativos vacíos pueden existir únicamente en el manifest para ese export.
@@ -273,7 +299,7 @@ Para confrontar por primera vez el archivo, preferir export. Acumulado se revisa
 | A6 | Lectura de mercado | Histórico por export reproduce hechos/proyección, m queda excluido del tiempo, calendario unknown, métricas/avisos correctos para la cobertura real |
 | A7 | Fallo y aislamiento | Revisar las garantías de rollback de las suites existentes; en una futura ejecución de integración usar sus schemas aislados. Un error real no deja datos parciales y su eventual run failed queda identificado |
 
-A3 no exige que la primera captura contenga todas las variantes ni todos los estados de a/l. Registrar lo no ejercitado. A7 no autoriza corromper manualmente la copia original, provocar fallos en desarrollo ni modificar tests en esta tarea. Si se decide ejecutar regresiones existentes después, [conftest.py](../backend/tests/conftest.py) crea/migra un schema aleatorio en TEST_DATABASE_URL y lo elimina al terminar; no conserva automáticamente una muestra real. Usar otro laboratorio para la revisión manual que deba conservarse.
+A3 no exige que la primera captura contenga todas las variantes ni todos los estados de a/l. Registrar lo no ejercitado. A7 no autoriza corromper manualmente la copia original ni provocar fallos en desarrollo durante la captura. Para regresiones, [conftest.py](../backend/tests/conftest.py) crea/migra un schema aleatorio en TEST_DATABASE_URL y lo elimina al terminar; no conserva automáticamente una muestra real. Usar otro laboratorio para la revisión manual que deba conservarse.
 
 Formato de resultado a conservar fuera de Git: caso, fecha, hash, ref del proyecto y del addon, contexto, esperado, observado, passed/failed/not_exercised y referencia de evidencia. No reutilizar una aprobación de fixture como resultado del primer archivo real.
 
@@ -321,8 +347,55 @@ Según [statistics.py](../backend/app/market/statistics.py), un bucket de precio
 
 **Decisión al 15/10:** GO para preparar la captura del 19/10 y ejecutar primero el adaptador offline cuando exista la copia. NO GO para importar en la base con simulación o afirmar que los datos reales ya están listos para analizar. El avance será captura -> offline -> laboratorio -> lectura por export -> análisis limitado de la muestra, con registro de aceptación en cada puerta.
 
-## 12. Estado Git y alcance de esta entrega
+## 12. Estado de la entrega documental original
 
-Al iniciar ya existía `?? docs/ITEM_CATALOG_RESEARCH.md`; se conserva sin editar. El único archivo creado por esta tarea es `docs/BETA_DATA_READINESS.md`, también sin seguimiento hasta decisión posterior del usuario. No se modificaron ROADMAP, backend, frontend, tests, migraciones, configuración privada ni datos. HEAD permanece en `85bd0e127b142aadfdce2ba73a552039c0067c94`, sin commit ni push.
+La entrega documental original agregó únicamente `docs/BETA_DATA_READINESS.md`, manteniendo intacta la investigación de catálogo. Ambos documentos quedaron versionados posteriormente en `4b93efc`. El estado previo sin seguimiento y sin cambios de implementación corresponde a esa entrega histórica.
 
-La revisión final de esta entrega comprueba formato, referencias locales y estado Git. Los tests citados fueron inspeccionados, no ejecutados. No se certifica el contenido actual de PostgreSQL ni una instalación de cliente/addon.
+La actualización de seguridad siguiente sí modifica CLI/servicio y agrega tests. No se certifica una instalación del cliente/addon ni una muestra auténtica.
+
+## 13. Actualización de seguridad: alcance y validación
+
+Se inspeccionaron las conexiones globales de `app/db/connection.py`, configuración, CLI, servicios de ingestión parcial/completa y scripts de migración/preparación. El servicio parcial escribe al importar y también al registrar un fallo: ambas rutas aceptan ahora la factory verificada. El servicio de snapshots completos, endpoints de importación ordinarios y scripts de preparación/migración conservan sus conexiones originales; el nuevo modo no los redirige. No se modificó ninguna migración ni contrato Auctionator.
+
+`--trial` requiere selección explícita por nombre de variable y nombre esperado de base. No cambia settings globales. El guard hace probes READ ONLY y revalida la identidad protegida antes de cada escritor; verifica el destino dentro de la transacción que va a escribir. Conserva ambas identidades iniciales durante la ejecución. Los errores del driver y del import se ocultan en stderr; los runs failed del ensayo reciben un mensaje fijo sin datos de conexión. La importación ordinaria conserva su selección de destino y contratos; sus excepciones inesperadas en la CLI también reciben ahora un mensaje fijo.
+
+La CLI protege además los imports que instancian Settings (`partial_service -> connection -> config`). Una configuración inválida, incluida una clave desconocida con DSN en `.env`, termina con código 1 y un mensaje fijo, sin imprimir ValidationError, input_value ni la excepción original. No se ignoran claves desconocidas ni se modifica la configuración global de Pydantic o del backend. No se guardan detalles sensibles para mostrarlos después; el operador debe revisar la configuración privadamente. No se garantiza un run failed para un fallo de inicialización o de identidad: no se entrega una conexión de escritura.
+
+Tests nuevos: [test_trial_database.py](../backend/tests/test_trial_database.py) y [test_trial_database_integration.py](../backend/tests/test_trial_database_integration.py). Cubren selección, ausencia, parámetros ambiguos, permisos/identidad no comprobables, misma base efectiva y alias reales, cambio de identidad, conexión/credenciales incorrectas, preview sin escrituras, errores redactados, registro de failed, retry revalidado, idempotencia y ruta ordinaria. La integración exige `TRIAL_INTEGRATION_DATABASE_URL` y `TRIAL_INTEGRATION_DATABASE_NAME` explícitos, y verifica el laboratorio antes de usarlo; nunca cae a desarrollo.
+
+Se preparó una base nueva dedicada `wow_beta_guard_7af27fd1381d_test`, distinta por identidad efectiva de desarrollo y de la base de tests existente. Sólo allí se aplicaron las migraciones existentes y se escribieron fixtures sintéticos. No se borraron/recrearon bases existentes ni volúmenes. La preparación inicial detectó un search_path que impedía crear tablas; la transacción del laboratorio revirtió y se corrigió el path fijo a public antes de completar las migraciones.
+
+Validación ejecutada: **184 tests aprobados** de selección de ensayo, integración real, Auctionator, parser/hardening, evidencia nativa, ingestión parcial, exports y concurrencia/rollback. Hubo un aviso de deprecación de Starlette/httpx ya presente en las dependencias. Sin datos reales de Forever. La sintaxis/ayuda de los flags se comprobó con la CLI real; los comandos de captura beta no se ejecutaron.
+
+Para repetir esas suites, usar sólo un laboratorio de tests ya provisionado y verificado. Desde backend, después de seleccionar privadamente BETA_TRIAL_DATABASE_URL y confirmar trialDatabaseName como en la sección 8, sin cambiar DATABASE_URL:
+
+```powershell
+$env:TRIAL_INTEGRATION_DATABASE_URL = $env:BETA_TRIAL_DATABASE_URL
+$env:TRIAL_INTEGRATION_DATABASE_NAME = $trialDatabaseName
+$env:TEST_DATABASE_URL = $env:BETA_TRIAL_DATABASE_URL
+.\.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider tests/test_trial_database.py tests/test_trial_database_integration.py tests/test_auctionator.py tests/test_native_exports.py tests/test_hardening_parser.py tests/test_partial_integration.py tests/test_export_integration.py tests/test_hardening_integration.py
+```
+
+Estas pruebas escriben fixtures en el laboratorio; no ejecutarlas sobre una base que deba permanecer como captura de aceptación sin datos de tests. No registrar ni publicar valores de las variables de conexión.
+
+Se compararon antes y después hashes de todas las filas y `last_value/is_called` de todas las secuencias de las dos bases existentes: coincidieron exactamente. Desarrollo tiene 13 tablas, 16.785 filas totales y 11 secuencias; la base de tests existente tiene 13 tablas, 4 filas y 11 secuencias. Desarrollo conserva sus **16.628 observaciones parciales**, con SHA-256 de filas ordenadas `0cdfa3139163c304ef862b8082e015be0d9f399596cca738bf96f3a60da0e1b8`. El hash del snapshot de control completo normalizado es `293677505c8b784bd578c24b5cf2873b2b9f624f22f8be289ecb6d45ecbf808d` en ambos extremos. Los snapshots son privados y no contienen DSNs ni filas originales.
+
+Límites: se necesita permiso de lectura de `pg_control_system()` en ambos destinos, un único host y parámetros explícitos; si no se puede verificar se rechaza. La base protegida es la configurada en DATABASE_URL al iniciar: no sobrescribirla para “seleccionar” el ensayo. El operador sigue siendo responsable de provisionar y elegir un laboratorio real, de confianza y con permisos apropiados. El guard no certifica vacío, finalidad o privacidad de cualquier otra base terminada en `_test`. No es una sandbox para un servidor hostil. El rollback SQL no revierte incrementos de secuencias de intentos que sí llegaron a escribir **en el laboratorio**; las validaciones rechazadas antes de escribir sí dejan filas y secuencias intactas.
+
+No se implementa un undo de imports confirmados ni soporte nuevo de codecs/precios. No hubo commit ni push. La preparación técnica del ensayo puede revisarse separadamente del NO GO para analizar datos auténticos que aún no fueron obtenidos.
+
+### Hardening posterior a la auditoría adversarial
+
+Se agregan regresiones en `test_trial_cli_startup.py` mediante procesos reales de la CLI y archivos `.env` exclusivamente temporales: claves desconocidas con credenciales sintéticas, errores Pydantic/decodificación, DSNs inválidos y selección requerida ausente. Se comprueba salida no cero y ausencia de DSN/contraseña/traceback en stdout y stderr. Puede ejecutarse esta suite sin PostgreSQL:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider tests/test_trial_database.py tests/test_trial_cli_startup.py
+```
+
+Las regresiones de identidad cubren cambios de la base protegida y del destino, pérdida de conexión, errores de permisos/consulta, sesiones ocupadas o escribibles y revalidación antes del primer escritor, reconexiones, retry y registro de failed. La integración añade rechazo antes del escritor con filas y secuencias del laboratorio intactas, simulando el cambio de identidad protegida sobre conexiones PostgreSQL reales. No intenta certificar routing dinámico ni modifica permisos para provocar fallos.
+
+Los **184 tests** y hashes anteriores corresponden a la validación inicial, previa a este hardening; no son el resultado de la nueva suite. Para repetir el conjunto completo anterior, agregar `tests/test_trial_cli_startup.py` al comando de integración, manteniendo exclusivamente el laboratorio verificado. Los fixtures de integración sí escriben allí; nunca usar desarrollo o una captura auténtica para estas regresiones.
+
+Validación final de este hardening (15/10/2026): **214 tests aprobados**, incluidos 58 casos unitarios de guard/CLI y procesos reales de inicialización. Se ejecutó el conjunto completo indicado, agregando la suite de startup; la integración se dirigió exclusivamente al laboratorio ya autorizado `wow_beta_guard_7af27fd1381d_test` (OID 339038), después de comprobar su identidad y las migraciones 001–004. Se repitieron ambos contraejemplos originales y fueron rechazados antes del escritor o sin revelar credenciales, respectivamente. El único aviso fue la deprecación existente de Starlette/httpx.
+
+El control de todas las filas por tabla y de `last_value/is_called` de las 11 secuencias coincidió exactamente antes/después en desarrollo (13 tablas, 16.785 filas, incluidas 16.628 observaciones parciales) y en la base de tests existente (13 tablas, 4 filas). El laboratorio pasó de 232 a 340 filas por los fixtures autorizados y sus secuencias pudieron avanzar; no se presenta como preservado ni como captura real. No hubo cambios de roles/permisos, archivos `.env` reales, configuración global de Settings, migraciones ni contratos Auctionator. `git diff --check` y la revisión equivalente de archivos nuevos no detectaron errores de whitespace. No hubo commit ni push. Veredicto técnico: **READY TO COMMIT**, exclusivamente dentro del alcance directo/estable documentado; no certifica datos auténticos ni proxies.
