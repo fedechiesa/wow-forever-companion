@@ -451,6 +451,25 @@ exclusivamente la base dedicada y esquemas aleatorios descritos en la sección 9
 La compatibilidad con SavedVariables auténticos, fracciones ModernAH y codec
 nativo sigue pendiente; no se amplió el alcance del parser.
 
+## Fase 3B.1: señales estadísticas backend
+
+`GET /market/signals` acepta los mismos selectores y ventanas de `/market/metrics`,
+más parámetros validados de reglas. Devuelve desviación del último mínimo
+guardado respecto de la mediana de los anteriores y tendencia histórica basada
+en pendiente y cambio de 3A. Las direcciones requieren evidencia suficiente;
+si falta, la respuesta incluye motivos estructurados y conserva los cálculos
+descriptivos disponibles. No son oportunidades de compra confirmadas.
+
+Defaults: siete precios anteriores para desviación, siete precios para tendencia,
+80% de cobertura sobre posiciones solicitadas, 50% sobre el intervalo de índices,
+precio en el ancla, desviación de al menos 20% y cambio de tendencia de al menos
+10% con pendiente del mismo signo. Origen `l` y base temporal conocida pueden
+exigirse mediante parámetros; por defecto, su ausencia conserva advertencias.
+Decimal sigue como string decimal fijo, con precisión de cálculo 40.
+Sin cambios de frontend, ingestión, datos, migraciones o endpoints existentes.
+Fórmulas, configuración, ejemplos simulados, pruebas y limitaciones en
+[PHASE_3B1_VALIDATION.md](docs/PHASE_3B1_VALIDATION.md).
+
 ## Fases 4A y 4A.1: dashboard React
 
 - Diseño oscuro responsive, acentos dorados/bronce, tipografías del sistema y
@@ -511,7 +530,7 @@ Para otra URL de prueba: definir `TEST_API_BASE_URL` (no cambia la URL de Vite).
 
 Validación original: [PHASE_4A_VALIDATION.md](docs/PHASE_4A_VALIDATION.md).
 Simplificación y validación actual: [PHASE_4A1_VALIDATION.md](docs/PHASE_4A1_VALIDATION.md).
-Oportunidades 3B, IA y alertas siguen pendientes. El diseño actual fue aprobado
+La UI de señales/oportunidades 3B, IA y alertas siguen pendientes. El diseño actual fue aprobado
 en revisión visual manual. Las pruebas montadas verifican eventos y efectos en
 jsdom; no sustituyen el layout de un navegador o las pruebas en un dispositivo touch.
 

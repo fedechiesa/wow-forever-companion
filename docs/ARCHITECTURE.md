@@ -219,7 +219,7 @@ Responsabilidades:
 - Detectar tendencias simples.
 - Medir dispersión de niveles de mínimos guardados, no volatilidad de retornos.
 - Describir disponibilidad máxima, cobertura, muestra y procedencia.
-- Detectar oportunidades en Fase 3B, todavía no implementada.
+- Evaluar señales históricas explicables en Fase 3B.1; ranking y oportunidades globales pendientes.
 - Calcular márgenes de crafting solamente en etapas futuras con fuentes adicionales.
 
 En v0.1 se priorizan reglas explicables sobre modelos avanzados.
@@ -288,7 +288,7 @@ Responsabilidades previstas:
 - `compose.yaml`: PostgreSQL local para desarrollo.
 
 La Fase 1 implementó el esqueleto técnico. Fases 2/2.5 implementan ingestión,
-persistencia y consultas históricas. `market` implementa Fase 3A;
+persistencia y consultas históricas. `market` implementa Fases 3A y 3B.1;
 `ai_tools` permanece vacío.
 
 ## Modelo de datos inicial
@@ -361,7 +361,8 @@ Contratos, fórmulas y validación en [PHASE_3A_VALIDATION.md](PHASE_3A_VALIDATI
 
 ### `market_opportunities`
 
-Propuesta futura de Fase 3B, no implementada: señales detectadas por reglas explicables.
+Propuesta futura de persistencia de oportunidades, no implementada. Fase 3B.1
+evalúa señales bajo demanda sin esta tabla, scores ni ranking entre mercados.
 
 Campos iniciales:
 
@@ -393,6 +394,19 @@ Campos iniciales:
 `market/errors.py` separa selección inexistente (404), incoherencia (409) y
 ventana imposible (422); errores PostgreSQL se exponen como 503 sin detalles de
 credenciales. `api/market.py` adapta HTTP; no calcula métricas ni hace imports.
+
+Fase 3B.1 agrega `GET /market/signals` con los mismos selectores y ventanas.
+`signal_service.py` obtiene exactamente un resultado de `MarketAnalysisService`
+y lo entrega a `signals.py`, evaluador puro sin SQL. `signal_contracts.py`
+valida parámetros y publica resultados versionados `3b1-v1`. Se reutilizan
+pendiente, cambios, cobertura, calidad y procedencia de 3A; la referencia de
+desviación reutiliza su mediana sobre los puntos anteriores al último.
+Muestra mínima, cobertura solicitada y del intervalo de índices, distancia al
+ancla y políticas opcionales de origen/base temporal condicionan las señales.
+Regla, suficiencia de evidencia y advertencias se exponen por separado.
+No se persisten resultados ni se convierten en ventas, predicciones o compras
+confirmadas. Fórmulas, defaults y validación:
+[PHASE_3B1_VALIDATION.md](PHASE_3B1_VALIDATION.md).
 
 Los dos proveedores son independientes. `accumulated` lee 003 y declara origen
 del mínimo desconocido. `export` lee hechos de un único estado sellado, usa

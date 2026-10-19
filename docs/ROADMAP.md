@@ -174,15 +174,18 @@ Criterio de salida:
 
 ## Fase 3B: Oportunidades explicables
 
-Estado: pendiente; no incluida en 3A.
+Estado: primer motor backend 3B.1 implementado; integración UI y ranking pendientes.
 
 Objetivo: evaluar reglas simples sobre métricas cuya evidencia pueda revisarse.
-Antes de implementarlas se deben definir cobertura/muestra mínimas y límites
-de las señales. Disponibilidad no permite inferir liquidez ni ventas. No usar m
+3B.1 define cobertura/muestra mínimas configurables y límites de las señales.
+Disponibilidad no permite inferir liquidez ni ventas. No usar m
 como precio actual ni recepción como cronología del mercado.
 
-Entregables futuros: reglas, razones y parámetros auditables. Sin predicciones
-o recomendaciones automáticas complejas.
+Implementado: desviación del último mínimo frente a la mediana anterior,
+tendencia con pendiente y cambio de 3A, calidad explícita y razones estructuradas,
+contratos Decimal y `GET /market/signals`. Sin frontend, persistencia adicional,
+ranking global, predicciones o recomendaciones automáticas complejas.
+[Diseño y validación 3B.1](PHASE_3B1_VALIDATION.md).
 
 ## Fase 4: UI usable
 

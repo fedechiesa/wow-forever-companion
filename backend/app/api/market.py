@@ -8,6 +8,8 @@ from app.market.contracts import (
 )
 from app.market.errors import SeriesIntegrityError, SeriesNotFound, WindowError
 from app.market.service import MarketAnalysisService
+from app.market.signal_contracts import MarketSignalsResponse, SignalsQuery
+from app.market.signal_service import MarketSignalService
 
 router = APIRouter(prefix="/market", tags=["Market Intelligence"])
 
@@ -33,3 +35,8 @@ def discover_series(query: Annotated[DiscoveryQuery, Query()]):
 @router.get("/metrics", response_model=MarketMetricsResponse)
 def market_metrics(query: Annotated[MetricsQuery, Query()]):
     return _read(lambda: MarketAnalysisService().analyze(query.analysis_request()))
+
+
+@router.get("/signals", response_model=MarketSignalsResponse)
+def market_signals(query: Annotated[SignalsQuery, Query()]):
+    return _read(lambda: MarketSignalService().analyze(query.analysis_request(), query.signal_parameters()))

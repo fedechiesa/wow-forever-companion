@@ -40,6 +40,23 @@ def change(samples: list[tuple[int, int]], unit: str) -> tuple[MetricValue, Metr
         return absolute, percent
 
 
+def exact_ols_terms(samples: list[tuple[int, int]]) -> tuple[int, int] | None:
+    """Integer OLS numerator/denominator for 3B rule decisions, without rounding.
+
+    Inputs are the validated integer bucket indices and copper prices. The public
+    3A descriptive linear_slope calculation and its Decimal output stay unchanged.
+    """
+    n = len(samples)
+    if n < 3 or len({d for d, _ in samples}) != n:
+        return None
+    xs = [d - samples[0][0] for d, _ in samples]
+    ys = [p for _, p in samples]
+    sx = sum(xs)
+    numerator = n * sum(x * y for x, y in zip(xs, ys)) - sx * sum(ys)
+    denominator = n * sum(x * x for x in xs) - sx * sx
+    return (numerator, denominator) if denominator > 0 else None
+
+
 def linear_slope(samples: list[tuple[int, int]]) -> MetricValue:
     with localcontext(analysis_context()):
         n = len(samples)
