@@ -1,5 +1,5 @@
 import { assertResponse, ContractError, type PartialItem, type PartialMarket } from "./contracts";
-import type { MarketMetricsResponse, SeriesDescriptor, SeriesDiscoveryResponse } from "./generated";
+import type { MarketMetricsResponse, MarketSignalsResponse, SeriesDescriptor, SeriesDiscoveryResponse } from "./generated";
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
@@ -54,5 +54,6 @@ export function createMarketApi(baseUrl: string, fetcher: typeof fetch = fetch) 
     }
   }
   function getMetrics(params: string, signal: AbortSignal): Promise<MarketMetricsResponse> { return get(`/market/metrics?${params}`, "MarketMetricsResponse", signal); }
-  return { getMarkets, getItems, getSeries, getMetrics };
+  function getSignals(params: string, signal: AbortSignal): Promise<MarketSignalsResponse> { return get(`/market/signals?${params}`, "MarketSignalsResponse", signal); }
+  return { getMarkets, getItems, getSeries, getMetrics, getSignals };
 }

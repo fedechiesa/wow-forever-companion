@@ -9,6 +9,7 @@
   "include": [
     "src/api/client.ts",
     "src/features/market/MarketResults.tsx",
+    "src/features/market/MarketSignals.tsx",
     "src/features/market/ContextControls.tsx",
     "src/features/market/WindowControls.tsx",
     "src/features/market/query.ts",

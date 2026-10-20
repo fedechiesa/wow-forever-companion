@@ -918,6 +918,378 @@
     ],
     "title": "ProvenanceSummary"
   },
+  "MarketSignalsResponse": {
+    "properties": {
+      "analysis_version": {
+        "type": "string",
+        "const": "3b1-v1",
+        "title": "Analysis Version",
+        "default": "3b1-v1"
+      },
+      "metrics_analysis_version": {
+        "type": "string",
+        "const": "3a-v1",
+        "title": "Metrics Analysis Version",
+        "default": "3a-v1"
+      },
+      "decimal_precision": {
+        "type": "integer",
+        "const": 40,
+        "title": "Decimal Precision",
+        "default": 40
+      },
+      "parameters": {
+        "$ref": "#/components/schemas/SignalParameters"
+      },
+      "context": {
+        "$ref": "#/components/schemas/SeriesContext"
+      },
+      "window": {
+        "$ref": "#/components/schemas/ResolvedWindow"
+      },
+      "points": {
+        "items": {
+          "$ref": "#/components/schemas/BucketPoint"
+        },
+        "type": "array",
+        "maxItems": 366,
+        "title": "Points"
+      },
+      "coverage": {
+        "$ref": "#/components/schemas/CoverageSummary"
+      },
+      "quality": {
+        "$ref": "#/components/schemas/QualitySummary"
+      },
+      "provenance": {
+        "$ref": "#/components/schemas/ProvenanceSummary"
+      },
+      "warnings": {
+        "items": {
+          "$ref": "#/components/schemas/QualityWarning"
+        },
+        "type": "array",
+        "title": "Warnings"
+      },
+      "price_deviation": {
+        "$ref": "#/components/schemas/HistoricalDeviationSignal"
+      },
+      "historical_trend": {
+        "$ref": "#/components/schemas/HistoricalTrendSignal"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "parameters",
+      "context",
+      "window",
+      "points",
+      "coverage",
+      "quality",
+      "provenance",
+      "warnings",
+      "price_deviation",
+      "historical_trend"
+    ],
+    "title": "MarketSignalsResponse"
+  },
+  "SignalParameters": {
+    "properties": {
+      "min_history_observations": {
+        "type": "integer",
+        "maximum": 365.0,
+        "minimum": 3.0,
+        "title": "Min History Observations",
+        "default": 7
+      },
+      "min_trend_observations": {
+        "type": "integer",
+        "maximum": 366.0,
+        "minimum": 3.0,
+        "title": "Min Trend Observations",
+        "default": 7
+      },
+      "min_price_coverage": {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+        "title": "Min Price Coverage",
+        "description": "Finite Decimal; text input at most 128 characters, fixed representation at most 96 characters; nonzero magnitude at least 1e-64. No rounding or normalization.",
+        "default": "0.8"
+      },
+      "min_index_coverage": {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+        "title": "Min Index Coverage",
+        "description": "Finite Decimal; text input at most 128 characters, fixed representation at most 96 characters; nonzero magnitude at least 1e-64. No rounding or normalization.",
+        "default": "0.5"
+      },
+      "deviation_threshold_pct": {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+        "title": "Deviation Threshold Pct",
+        "description": "Finite Decimal; text input at most 128 characters, fixed representation at most 96 characters; nonzero magnitude at least 1e-64. No rounding or normalization.",
+        "default": "20"
+      },
+      "trend_threshold_pct": {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+        "title": "Trend Threshold Pct",
+        "description": "Finite Decimal; text input at most 128 characters, fixed representation at most 96 characters; nonzero magnitude at least 1e-64. No rounding or normalization.",
+        "default": "10"
+      },
+      "min_trend_slope_copper_per_scan_index": {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+        "title": "Min Trend Slope Copper Per Scan Index",
+        "description": "Finite Decimal; text input at most 128 characters, fixed representation at most 96 characters; nonzero magnitude at least 1e-64. No rounding or normalization.",
+        "default": "0"
+      },
+      "max_latest_price_lag": {
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 0.0,
+        "title": "Max Latest Price Lag",
+        "default": 0
+      },
+      "require_native_l": {
+        "type": "boolean",
+        "title": "Require Native L",
+        "default": false
+      },
+      "require_known_temporal_basis": {
+        "type": "boolean",
+        "title": "Require Known Temporal Basis",
+        "default": false
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "SignalParameters"
+  },
+  "HistoricalDeviationSignal": {
+    "properties": {
+      "signal_type": {
+        "type": "string",
+        "const": "historical_price_deviation",
+        "title": "Signal Type",
+        "default": "historical_price_deviation"
+      },
+      "direction": {
+        "type": "string",
+        "enum": [
+          "below_reference",
+          "above_reference",
+          "no_significant_deviation",
+          "insufficient_evidence"
+        ],
+        "title": "Direction"
+      },
+      "observed_price_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "reference_price_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "reference_method": {
+        "type": "string",
+        "const": "median_excluding_latest",
+        "title": "Reference Method",
+        "default": "median_excluding_latest"
+      },
+      "signed_deviation_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "absolute_deviation_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "deviation_pct": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "evidence": {
+        "$ref": "#/components/schemas/SignalEvidence"
+      },
+      "explanation": {
+        "type": "string",
+        "title": "Explanation"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "direction",
+      "observed_price_copper",
+      "reference_price_copper",
+      "signed_deviation_copper",
+      "absolute_deviation_copper",
+      "deviation_pct",
+      "evidence",
+      "explanation"
+    ],
+    "title": "HistoricalDeviationSignal"
+  },
+  "SignalEvidence": {
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "sufficient",
+          "insufficient"
+        ],
+        "title": "Status"
+      },
+      "reasons": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceReason"
+        },
+        "type": "array",
+        "title": "Reasons"
+      },
+      "usable_observation_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Usable Observation Count"
+      },
+      "historical_observation_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Historical Observation Count"
+      },
+      "requested_price_ratio": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "index_span_price_ratio": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "latest_price_lag": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Latest Price Lag"
+      },
+      "minimum_l_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Minimum L Count"
+      },
+      "minimum_h_fallback_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Minimum H Fallback Count"
+      },
+      "minimum_unknown_origin_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Minimum Unknown Origin Count"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "status",
+      "reasons",
+      "usable_observation_count",
+      "historical_observation_count",
+      "requested_price_ratio",
+      "index_span_price_ratio",
+      "minimum_l_count",
+      "minimum_h_fallback_count",
+      "minimum_unknown_origin_count"
+    ],
+    "title": "SignalEvidence"
+  },
+  "EvidenceReason": {
+    "properties": {
+      "code": {
+        "type": "string",
+        "enum": [
+          "insufficient_observations",
+          "insufficient_history",
+          "insufficient_price_coverage",
+          "insufficient_index_coverage",
+          "latest_price_missing_or_stale",
+          "native_l_required",
+          "known_temporal_basis_required",
+          "zero_reference",
+          "zero_baseline",
+          "unavailable_trend"
+        ],
+        "title": "Code"
+      },
+      "message": {
+        "type": "string",
+        "title": "Message"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "code",
+      "message"
+    ],
+    "title": "EvidenceReason"
+  },
+  "HistoricalTrendSignal": {
+    "properties": {
+      "signal_type": {
+        "type": "string",
+        "const": "historical_price_trend",
+        "title": "Signal Type",
+        "default": "historical_price_trend"
+      },
+      "direction": {
+        "type": "string",
+        "enum": [
+          "ascending",
+          "descending",
+          "no_significant_trend",
+          "insufficient_evidence"
+        ],
+        "title": "Direction"
+      },
+      "first_price_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "last_price_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "slope_copper_per_scan_index": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "price_change_copper": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "price_change_pct": {
+        "$ref": "#/components/schemas/MetricValue"
+      },
+      "evidence": {
+        "$ref": "#/components/schemas/SignalEvidence"
+      },
+      "explanation": {
+        "type": "string",
+        "title": "Explanation"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "direction",
+      "first_price_copper",
+      "last_price_copper",
+      "slope_copper_per_scan_index",
+      "price_change_copper",
+      "price_change_pct",
+      "evidence",
+      "explanation"
+    ],
+    "title": "HistoricalTrendSignal"
+  },
   "SeriesDiscoveryResponse": {
     "properties": {
       "series": {

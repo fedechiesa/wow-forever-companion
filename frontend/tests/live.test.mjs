@@ -12,6 +12,8 @@ const { resolveContext, planAnalysis } = built("features/market/selection.js");
 const { initialWindow } = built("features/market/WindowControls.js");
 const { startResourceRequest } = built("features/market/resource.js");
 const { MarketResults } = built("features/market/MarketResults.js");
+const { MarketSignals } = built("features/market/MarketSignals.js");
+const { signalsMatchAnalysis } = built("features/market/signals.js");
 const React = require("react");
 const { renderToStaticMarkup } = require("react-dom/server");
 const url = process.env.TEST_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -87,4 +89,36 @@ test("real API: invalid and missing contexts return 422 and 404", async () => {
   await assert.rejects(api.getMetrics(params.toString(), signal), error => error.status === 422);
   params.set("size", "30"); params.set("source_id", "nonexistent-readonly-audit-context");
   await assert.rejects(api.getMetrics(params.toString(), signal), error => error.status === 404);
+});
+
+test("real API: signals use the identical analysis, validated defaults and exact Decimals", async () => {
+  assert.ok(context);
+  const params = metricsParams(context, initialWindow).toString();
+  const [analysis, data] = await Promise.all([api.getMetrics(params, signal), api.getSignals(params, signal)]);
+  assert.equal(signalsMatchAnalysis(analysis, data), true);
+  assert.equal(data.analysis_version, "3b1-v1"); assert.equal(data.metrics_analysis_version, analysis.analysis_version);
+  assert.deepEqual(data.parameters, { min_history_observations: 7, min_trend_observations: 7, min_price_coverage: "0.8", min_index_coverage: "0.5", deviation_threshold_pct: "20", trend_threshold_pct: "10", min_trend_slope_copper_per_scan_index: "0", max_latest_price_lag: 0, require_native_l: false, require_known_temporal_basis: false });
+  assert.equal(data.price_deviation.evidence.status, "sufficient"); assert.equal(data.historical_trend.evidence.status, "sufficient");
+  assert.equal(typeof data.price_deviation.deviation_pct.value, "string");
+  assert.deepEqual(data.historical_trend.slope_copper_per_scan_index, analysis.metrics.trend_copper_per_scan_index);
+  const markup = renderToStaticMarkup(React.createElement(MarketResults, { data: analysis, signals: React.createElement(MarketSignals, { analysis, resource: { status: "success", data } }) }));
+  assert.match(markup, /Señales del histórico/); assert.match(markup, /SIMULATED/); assert.match(markup, /<svg/);
+  assert.match(markup, /no confirma una oportunidad/); assert.match(markup, /reconstrucción histórica inmutable/);
+  const after = await api.getMetrics(params, signal); assert.deepEqual(after, analysis);
+  console.log(JSON.stringify({ deviation: data.price_deviation.direction, deviationPct: data.price_deviation.deviation_pct.value, trend: data.historical_trend.direction, evidence: data.price_deviation.evidence.status }));
+});
+
+test("real API: signals explain an empty range and preserve the empty chart", async () => {
+  const params = metricsParams(context, { type: "index_range", start: "0", end: "2" }).toString();
+  const [analysis, data] = await Promise.all([api.getMetrics(params, signal), api.getSignals(params, signal)]);
+  assert.equal(signalsMatchAnalysis(analysis, data), true);
+  for (const rule of [data.price_deviation, data.historical_trend]) {
+    assert.equal(rule.direction, "insufficient_evidence"); assert.equal(rule.evidence.status, "insufficient"); assert.ok(rule.evidence.reasons.length);
+  }
+  const markup = renderToStaticMarkup(React.createElement(MarketSignals, { analysis, resource: { status: "success", data } }));
+  assert.match(markup, /Sin mínimos guardados en esta ventana/); assert.match(markup, /insufficient_observations|insufficient_history/);
+  const invalid = new URLSearchParams(params); invalid.set("size", "367");
+  await assert.rejects(api.getSignals(invalid.toString(), signal), error => error.status === 422);
+  invalid.delete("size"); invalid.set("source_id", "nonexistent-readonly-signals-context");
+  await assert.rejects(api.getSignals(invalid.toString(), signal), error => error.status === 404);
 });

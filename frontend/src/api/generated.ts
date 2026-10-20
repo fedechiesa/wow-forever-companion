@@ -25,6 +25,11 @@ export interface CoverageSummary {
   availability_ratio: MetricValue;
 }
 
+export interface EvidenceReason {
+  code: "insufficient_observations" | "insufficient_history" | "insufficient_price_coverage" | "insufficient_index_coverage" | "latest_price_missing_or_stale" | "native_l_required" | "known_temporal_basis_required" | "zero_reference" | "zero_baseline" | "unavailable_trend";
+  message: string;
+}
+
 export interface EvidenceReference {
   table: "partial_observations" | "partial_export_facts";
   row_id: number;
@@ -33,6 +38,31 @@ export interface EvidenceReference {
   native_field?: "l" | "h" | "a" | null;
   original_item_key?: string | null;
   original_day_key?: string | null;
+}
+
+export interface HistoricalDeviationSignal {
+  signal_type?: "historical_price_deviation";
+  direction: "below_reference" | "above_reference" | "no_significant_deviation" | "insufficient_evidence";
+  observed_price_copper: MetricValue;
+  reference_price_copper: MetricValue;
+  reference_method?: "median_excluding_latest";
+  signed_deviation_copper: MetricValue;
+  absolute_deviation_copper: MetricValue;
+  deviation_pct: MetricValue;
+  evidence: SignalEvidence;
+  explanation: string;
+}
+
+export interface HistoricalTrendSignal {
+  signal_type?: "historical_price_trend";
+  direction: "ascending" | "descending" | "no_significant_trend" | "insufficient_evidence";
+  first_price_copper: MetricValue;
+  last_price_copper: MetricValue;
+  slope_copper_per_scan_index: MetricValue;
+  price_change_copper: MetricValue;
+  price_change_pct: MetricValue;
+  evidence: SignalEvidence;
+  explanation: string;
 }
 
 export interface MarketMetrics {
@@ -62,6 +92,22 @@ export interface MarketMetricsResponse {
   coverage: CoverageSummary;
   quality: QualitySummary;
   provenance: ProvenanceSummary;
+}
+
+export interface MarketSignalsResponse {
+  analysis_version?: "3b1-v1";
+  metrics_analysis_version?: "3a-v1";
+  decimal_precision?: 40;
+  parameters: SignalParameters;
+  context: SeriesContext;
+  window: ResolvedWindow;
+  points: Array<BucketPoint>;
+  coverage: CoverageSummary;
+  quality: QualitySummary;
+  provenance: ProvenanceSummary;
+  warnings: Array<QualityWarning>;
+  price_deviation: HistoricalDeviationSignal;
+  historical_trend: HistoricalTrendSignal;
 }
 
 export interface MetricValue {
@@ -146,6 +192,32 @@ export interface SeriesDiscoveryResponse {
   offset: number;
   has_more: boolean;
   ordering?: "mode_source_basis_export_id; not observation chronology";
+}
+
+export interface SignalEvidence {
+  status: "sufficient" | "insufficient";
+  reasons: Array<EvidenceReason>;
+  usable_observation_count: number;
+  historical_observation_count: number;
+  requested_price_ratio: MetricValue;
+  index_span_price_ratio: MetricValue;
+  latest_price_lag?: number | null;
+  minimum_l_count: number;
+  minimum_h_fallback_count: number;
+  minimum_unknown_origin_count: number;
+}
+
+export interface SignalParameters {
+  min_history_observations?: number;
+  min_trend_observations?: number;
+  min_price_coverage?: string;
+  min_index_coverage?: string;
+  deviation_threshold_pct?: string;
+  trend_threshold_pct?: string;
+  min_trend_slope_copper_per_scan_index?: string;
+  max_latest_price_lag?: number;
+  require_native_l?: boolean;
+  require_known_temporal_basis?: boolean;
 }
 
 export interface WindowSpec {

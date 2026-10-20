@@ -785,6 +785,53 @@ h1 {
   overflow-wrap:anywhere
 }
 
+.coin-amount {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:5px 10px;
+  font-size:1.6rem;
+  font-weight:550;
+  line-height:1.45;
+  font-variant-numeric:tabular-nums;
+  color:#e8e7df
+}
+
+.coin-denomination {
+  display:inline-flex;
+  align-items:baseline;
+  gap:5px;
+  min-width:0
+}
+
+.coin-denomination>span { min-width:0; overflow-wrap:anywhere }
+.coin-denomination small { font-size:.65em; margin-left:2px; color:#bdc8c5 }
+.coin-denomination i {
+  display:inline-block;
+  flex-shrink:0;
+  height:8px;
+  width:8px;
+  border-radius:50%;
+  border:1px solid #ffffff55;
+  background:var(--coin-color);
+  box-shadow:inset -1px -1px 1px #00000050
+}
+.coin-gold { --coin-color:#e4bc65 }
+.coin-silver { --coin-color:#c5d1df }
+.coin-copper { --coin-color:#d79a76 }
+.coin-rate { font-size:.69rem; color:#bdc8c5; font-weight:400 }
+.technical-rate .metric-number { font-size:1rem; letter-spacing:normal }
+.coin-sign { margin-right:-6px }
+.currency-fraction-note { display:block; color:var(--muted); font-size:.68rem; margin-top:5px; line-height:1.6 }
+.money-value .raw-copper { overflow-wrap:anywhere; white-space:normal }
+.chart-detail .coin-amount,.evidence-table .coin-amount { font-size:.95rem }
+.chart-detail { align-items:baseline }
+.chart-detail .money-value { flex:0 1 auto; min-width:0 }
+.evidence-table .money-value p { white-space:normal; max-width:280px }
+.signal-values .coin-amount { font-size:1.15rem }
+.secondary-metrics .coin-amount { font-size:1.4rem }
+@media(max-width:600px) { .metric-card .coin-amount { font-size:1.35rem } .coin-amount { gap:4px 8px } }
+
 .unavailable {
   font-size:.96rem;
   font-weight:550;
@@ -902,6 +949,32 @@ h1 {
   color:#aeb9b8;
   font-size:.9rem
 }
+
+.signals-panel>.muted { margin-bottom:18px }
+.signals-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px }
+.signal-card { padding:20px; border:1px solid var(--border); border-radius:8px; background:#11191b60; min-width:0 }
+.signal-card h3 { color:#e1d5ba; margin-bottom:20px; line-height:1.5 }
+.signal-card .eyebrow { font-size:.65rem }
+.signal-card .metric-label { margin-bottom:7px }
+.signal-explanation { font-size:.8rem; color:#c0cac6; margin:16px 0 }
+.signal-evidence { border-top:1px solid var(--border); padding-top:14px }
+.signal-detail { margin-top:17px; font-size:.75rem }
+.signal-detail summary { color:#cfb780; line-height:1.6 }
+.signal-detail>.muted { margin-top:14px }
+.signal-values { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:16px 0 }
+.signal-values .metric-card { padding:12px }
+.signal-values .metric-number { font-size:1.15rem }
+.signal-reasons { padding-left:18px; color:#bdc8c4; font-size:.77rem; line-height:1.7; margin:14px 0 }
+.signal-reasons li+li { margin-top:10px }
+.signal-reasons small { display:block; color:#9faeaf; overflow-wrap:anywhere }
+.signal-notice { font-size:.76rem; color:#e2bd75; margin-bottom:18px }
+.signal-footnote { margin-top:18px; color:var(--muted); font-size:.75rem }
+.signal-parameters { font-size:.74rem; line-height:1.7 }
+.signal-parameters div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:5px 16px; padding:6px 0; border-bottom:1px solid var(--border) }
+.signal-parameters dt,.signal-parameters dd { margin:0; overflow-wrap:anywhere; min-width:0 }
+.signal-parameters dt { color:var(--muted) }
+@media(max-width:1150px) { .signals-grid { grid-template-columns:1fr } }
+@media(max-width:600px) { .signal-card { padding:16px } .signals-panel>.panel-heading { align-items:start; flex-wrap:wrap } .signal-values { grid-template-columns:1fr } }
 
 .secondary-metrics .metric-number {
   font-size:1.4rem

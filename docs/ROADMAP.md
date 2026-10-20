@@ -174,7 +174,8 @@ Criterio de salida:
 
 ## Fase 3B: Oportunidades explicables
 
-Estado: primer motor backend 3B.1 implementado; integración UI y ranking pendientes.
+Estado: motor backend 3B.1 publicado; integración UI 3B.2 implementada, pendiente de
+captura real y revisión visual. Ranking pendiente.
 
 Objetivo: evaluar reglas simples sobre métricas cuya evidencia pueda revisarse.
 3B.1 define cobertura/muestra mínimas configurables y límites de las señales.
@@ -183,9 +184,18 @@ como precio actual ni recepción como cronología del mercado.
 
 Implementado: desviación del último mínimo frente a la mediana anterior,
 tendencia con pendiente y cambio de 3A, calidad explícita y razones estructuradas,
-contratos Decimal y `GET /market/signals`. Sin frontend, persistencia adicional,
+contratos Decimal y `GET /market/signals`. El motor no agrega persistencia adicional,
 ranking global, predicciones o recomendaciones automáticas complejas.
 [Diseño y validación 3B.1](PHASE_3B1_VALIDATION.md).
+
+3B.2 integra las dos señales al análisis del item, después del gráfico, sin
+selectores técnicos nuevos ni cambios de backend. Conserva las direcciones del
+motor, magnitudes Decimal exactas, evidencia y motivos por regla. Reutiliza la
+misma selección/ventana y el scheduler con cancelación; los errores de señales
+permiten reintentar sin perder gráfico/métricas. Se verifica que ambas respuestas
+describan las mismas observaciones antes de combinarlas. Datos actuales simulados;
+la fase permanece abierta para obtener/revisar una captura real.
+[Validación 3B.2 y pendiente visual](PHASE_3B2_VALIDATION.md).
 
 ## Fase 4: UI usable
 

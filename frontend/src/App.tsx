@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { getItems, getMarkets, getMetrics, getSeries } from "./api/backend";
+import { getItems, getMarkets, getMetrics, getSeries, getSignals } from "./api/backend";
 import type { Dataset } from "./api/contracts";
 import { StatusPanel } from "./components/StatusPanel";
 import { emptySelection, type ContextSelection } from "./features/market/ContextControls";
@@ -8,6 +8,7 @@ import { AdvancedOptions } from "./features/market/AdvancedOptions";
 import { ContextChoice } from "./features/market/ContextChoice";
 import { ItemList } from "./features/market/ItemList";
 import { MarketResults } from "./features/market/MarketResults";
+import { MarketSignals } from "./features/market/MarketSignals";
 import { contextKey, type WindowInput } from "./features/market/query";
 import { marketLabel, planAnalysis, resolveContext } from "./features/market/selection";
 import { useResource } from "./features/market/useResource";
@@ -22,6 +23,7 @@ export function App() {
   const [window, setWindow] = useState<WindowInput>(initialWindow);
   const [resetNotice, setResetNotice] = useState("");
   const [metricsRetry, setMetricsRetry] = useState(0);
+  const [signalsRetry, setSignalsRetry] = useState(0);
   const markets = useResource(`markets:${retry}`, getMarkets);
   const marketList = markets.status === "success" ? markets.data : [];
   const market = marketList.find(m => String(m.id) === marketId && (!dataset || m.dataset === dataset));
@@ -35,6 +37,12 @@ export function App() {
   const metrics = useResource(plan.params ? `${plan.params}:${metricsRetry}` : null, async signal => {
     const result = await getMetrics(plan.params!, signal);
     if (contextKey(result.context) !== contextKey(descriptor!.context)) throw new Error("La respuesta no coincide con el historial seleccionado.");
+    return result;
+  }, 200);
+  // Identical selection/window query; statistical parameters use validated API defaults.
+  const signals = useResource(plan.params ? `${plan.params}:${signalsRetry}` : null, async signal => {
+    const result = await getSignals(plan.params!, signal);
+    if (contextKey(result.context) !== contextKey(descriptor!.context)) throw new Error("Las señales no coinciden con el historial seleccionado.");
     return result;
   }, 200);
 
@@ -119,7 +127,8 @@ export function App() {
           {plan.error && <p className="form-error" role="alert">{plan.error} Revisá Opciones avanzadas.</p>}
           {metrics.status === "loading" && <section className="panel analysis-state"><StatusPanel title="Cargando gráfico y estadísticas" loading>Consultando el historial de este item.</StatusPanel></section>}
           {metrics.status === "error" && <section className="panel analysis-state"><StatusPanel title="No pudimos cargar el análisis" error onRetry={() => setMetricsRetry(n => n + 1)}>{metrics.error.message}</StatusPanel></section>}
-          {metrics.status === "success" && <MarketResults data={metrics.data}/>}
+          {metrics.status === "success" && <MarketResults data={metrics.data} signals={<MarketSignals analysis={metrics.data} resource={signals}
+            onRetry={() => setSignalsRetry(n => n + 1)} onReload={() => { setMetricsRetry(n => n + 1); setSignalsRetry(n => n + 1); }}/>}/>}
         </div>
       </div>
     </main>

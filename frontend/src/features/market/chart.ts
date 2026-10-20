@@ -38,7 +38,7 @@ export function chartGeometry(points: BucketPoint[], width = 900, height = 270) 
   const first = points[0]?.scan_day ?? 0;
   const last = points[points.length - 1]?.scan_day ?? first;
   const dots: ChartDot[] = points.map(point => ({ point,
-    x: last === first ? width / 2 : 82 + (point.scan_day - first) / (last - first) * (width - 110),
+    x: last === first ? width / 2 : 112 + (point.scan_day - first) / (last - first) * (width - 140),
     y: point.daily_minimum == null ? null : 15 + (high - point.daily_minimum) / (high - low) * (height - 55),
   }));
   const segments: ChartDot[][] = [];

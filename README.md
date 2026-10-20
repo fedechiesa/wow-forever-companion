@@ -14,7 +14,7 @@ Alcance concreto:
 - Ingerir datos simulados o archivos exportados en un formato controlado.
 - Guardar históricos de items, snapshots y estadísticas parciales con procedencia.
 - Consultar mínimos guardados, promedio/mediana de mínimos, cambios, dispersión, tendencia y disponibilidad máxima.
-- Detectar oportunidades iniciales con reglas explicables en Fase 3B, todavía pendiente.
+- Consultar señales estadísticas explicables en Fase 3B; su integración 3B.2 espera revisión visual. No confirman oportunidades de compra.
 - Preparar el backend para exponer herramientas consultables por un asistente de IA sobre datos propios.
 - Proveer una interfaz simple para explorar items y ver senales de mercado.
 
@@ -530,9 +530,30 @@ Para otra URL de prueba: definir `TEST_API_BASE_URL` (no cambia la URL de Vite).
 
 Validación original: [PHASE_4A_VALIDATION.md](docs/PHASE_4A_VALIDATION.md).
 Simplificación y validación actual: [PHASE_4A1_VALIDATION.md](docs/PHASE_4A1_VALIDATION.md).
-La UI de señales/oportunidades 3B, IA y alertas siguen pendientes. El diseño actual fue aprobado
+La integración de señales 3B.2 está implementada y espera revisión visual; rankings,
+IA y alertas siguen pendientes. El diseño 4A/4A.1 fue aprobado
 en revisión visual manual. Las pruebas montadas verifican eventos y efectos en
 jsdom; no sustituyen el layout de un navegador o las pruebas en un dispositivo touch.
+
+### Fase 3B.2: señales en el análisis del item
+
+Debajo del gráfico, **Señales del histórico** muestra desviación frente a la mediana
+anterior y tendencia histórica, con dirección, magnitud, explicación y evidencia
+por regla. Se distinguen resultados neutros, evidencia insuficiente y ausencia de
+precios. Las bajadas y subidas usan el mismo estilo neutral. Los motivos estructurados,
+valores exactos, procedencia y parámetros efectivos siguen accesibles.
+
+`/market/signals` usa exactamente la consulta de `/market/metrics`, incluidos item
+con variante, fuente, base temporal, modo/export y ventana. Los parámetros estadísticos
+quedan en sus defaults validados del backend. Las señales tienen carga, cancelación
+y reintento independientes: su error conserva gráfico y métricas. Si las lecturas
+no coinciden en contexto, ventana o evidencia, se ocultan las señales y se ofrece
+recargar ambas consultas. No se modifican backend, ingestión ni PostgreSQL.
+
+Datos de desarrollo **SIMULATED**; accumulated puede revisarse por imports posteriores
+y export representa un estado sellado seleccionado. Ninguno garantiza precio actual,
+ventas, demanda o rentabilidad. Implementación, pruebas y pendiente de captura real:
+[PHASE_3B2_VALIDATION.md](docs/PHASE_3B2_VALIDATION.md).
 
 ## Principio guia
 

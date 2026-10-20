@@ -13,6 +13,9 @@ const { selectedDescriptor, ContextControls, emptySelection } = built("features/
 const { WindowControls, defaultIndexRange } = built("features/market/WindowControls.js");
 const { StatusPanel } = built("components/StatusPanel.js");
 const { MetricCard } = built("components/MetricCard.js");
+const { MoneyValue } = built("components/MoneyValue.js");
+const { PriceChart } = built("features/market/PriceChart.js");
+const { splitCopper, presentCopper, formatCopper, formatCopperAxis } = built("features/market/currency.js");
 const { resolveContext, planAnalysis, selectionFromContext, marketLabel } = built("features/market/selection.js");
 const { startResourceRequest, visibleResource } = built("features/market/resource.js");
 const { AdvancedOptions } = built("features/market/AdvancedOptions.js");
@@ -37,12 +40,129 @@ test("coins preserve fractional copper and values beyond Number precision", () =
   assert.throws(() => copperToCoins(Number.MAX_SAFE_INTEGER + 1));
   assert.throws(() => copperToCoins(0.5));
 });
+
+for (const [input, expected] of [
+  [0, "0c"], [1, "1c"], [45, "45c"], [99, "99c"], [100, "1s"], [9999, "99s 99c"],
+  [10000, "1g"], [1000, "10s"], [85490, "8g 54s 90c"], [1102045, "110g 20s 45c"],
+  [-1600, "−16s"], ["-10001", "−1g 1c"], ["-0.5", "≈ −1c"], ["69.5", "≈ 70c"],
+  ["72.06666666666666666666666666666666666667", "≈ 72c"], ["0.0000000000000000000000000000000001", "≈ 0c"],
+  ["10000.50", "≈ 1g 1c"], ["900719925474099312345.50000000000000000001", "≈ 90071992547409931g 23s 46c"],
+]) {
+  test(`WoW currency: ${input} copper → ${expected}`, () => {
+    assert.equal(formatCopper(input, "derived"), expected);
+    const amount = splitCopper(input);
+    assert.equal(amount.original, String(input));
+    // Independent integer identity checks denominations without float conversion.
+    const integer = BigInt(String(input).replace(/^[+-]/, "").split(".")[0]);
+    assert.equal(amount.gold * 10000n + amount.silver * 100n + amount.copper, integer);
+  });
+}
+
+test("currency rounds only its display, with exact carries and untouched original digits", () => {
+  const amount = presentCopper("+00009999.99999999999999999999", "derived");
+  assert.equal(amount.original, "+00009999.99999999999999999999");
+  assert.equal(amount.text, "≈ 1g");
+  assert.equal(amount.rounded, true);
+  assert.equal(presentCopper("0.00").rounded, false);
+  assert.equal(formatCopper("-0.000"), "−0c");
+  assert.equal(formatCopper("0.010", "derived"), "≈ 0c");
+});
+
+for (const [input, expected] of [
+  ["5.5", "≈ 6c"], ["10.4", "≈ 10c"], ["-15.5", "≈ −16c"], ["10000.5", "≈ 1g 1c"],
+  ["99.5", "≈ 1s"], ["9999.5", "≈ 1g"], ["-9999.5", "≈ −1g"],
+  ["5.4999999999999999999999999999999999999999", "≈ 5c"], ["-5.4999999999999999999999999999999999999999", "≈ −5c"],
+  ["5.5000000000000000000000000000000000000000", "≈ 6c"], ["-5.5000000000000000000000000000000000000000", "≈ −6c"],
+  ["-0.0000000000000000000000000000000000000001", "≈ −0c"],
+  ["90071992547409939999.5", "≈ 9007199254740994g"], ["-90071992547409939999.5", "≈ −9007199254740994g"],
+  ["10000.0000000000000000000000000000000000000", "1g"],
+]) {
+  test(`ROUND_HALF_UP display: ${input} → ${expected}`, () => {
+    const amount = presentCopper(input, "derived");
+    assert.equal(amount.text, expected);
+    assert.equal(amount.original, input);
+    assert.ok(amount.tokens.every(token => /^\d+$/.test(token.value)), "All displayed denominations are whole coins");
+    assert.equal(amount.rounded, expected.startsWith("≈"));
+  });
+}
+
+test("observed prices never use derived rounding, including invalid fractional prices", () => {
+  for (const value of ["5.5", "0.0000000000000000000001", "-15.5"]) {
+    assert.throws(() => formatCopper(value), /Precio observado inválido/);
+    assert.throws(() => render(MoneyValue, { value }), /Precio observado inválido/);
+    assert.throws(() => render(MetricCard, { label: "Observado", metric: metric(value), moneyKind: "observed" }), /Precio observado inválido/);
+  }
+  assert.equal(formatCopper("5.000"), "5c");
+  const data = { context, points: [point(100, 5.5), point(101, 10)] };
+  const before = JSON.stringify(data);
+  assert.throws(() => render(PriceChart, { data }), /seguro/);
+  assert.equal(JSON.stringify(data), before);
+});
+
+test("derived mean and median round visually while slope remains exact and nonzero", () => {
+  for (const [label, value, expected] of [["Promedio", "10.4", "aproximadamente 10 cobre"], ["Mediana", "5.5", "aproximadamente 6 cobre"]]) {
+    const input = metric(value), before = JSON.stringify(input);
+    const markup = render(MetricCard, { label, metric: input });
+    assert.ok(markup.includes(expected)); assert.ok(markup.includes(value));
+    assert.equal(JSON.stringify(input), before);
+  }
+  for (const value of ["0.0000000000000000000000000000000000000001", "-0.0000000000000000000000000000000000000001", "0", "-15.5"]) {
+    const markup = render(MetricCard, { label: "Pendiente", metric: metric(value, "copper/scan_index") });
+    assert.ok(markup.includes(value.replace("-", "−").replace(".", ",")));
+    assert.ok(markup.includes(value), "Original Decimal remains accessible");
+    assert.match(markup, /copper \/ índice/);
+    assert.doesNotMatch(markup, /coin-amount|≈|…/);
+  }
+});
+
+test("currency rejects invalid inputs instead of coercing or rounding them", () => {
+  for (const bad of ["", " 100", "100 ", "1e3", "NaN", "Infinity", "1,5", ".5", "1.", "--1", "1g", NaN, Infinity, 0.5, Number.MAX_SAFE_INTEGER + 1, null, undefined, {}, true]) {
+    assert.throws(() => splitCopper(bad), /inválido|seguro/);
+    assert.throws(() => formatCopper(bad), /inválido|seguro/);
+  }
+});
+
+test("SVG currency ticks remain exact and distinct across denomination boundaries", () => {
+  for (const [value, expected] of [[0, "0c"], [99, "99c"], [100, "1s"], [101, "1s 1c"], [9999, "99s 99c"], [10000, "1g"], [10001, "1g 1c"], [85490, "8g 54s 90c"], [2147483647, "2147483647c"]]) {
+    assert.equal(formatCopperAxis(value), expected);
+  }
+  for (const pair of [[99, 100], [9999, 10000], [10000, 10001], [2147483646, 2147483647]]) {
+    const labels = chartGeometry(pair.map((price, i) => point(i, price))).yTicks.map(t => formatCopperAxis(t.value));
+    assert.ok(labels.length >= 2); assert.equal(new Set(labels).size, labels.length);
+    assert.ok(labels.every(label => label.length <= 14), "Labels fit the reserved SVG margin");
+  }
+});
+
+test("currency render has denomination text, decorative dots and exact original copper", () => {
+  const markup = render(MoneyValue, { value: "85490.12345000000000000001", kind: "derived" });
+  assert.match(markup, /aria-label="aproximadamente 8 oro, 54 plata, 90 cobre; redondeo visual/);
+  for (const denomination of ["gold", "silver", "copper"]) assert.match(markup, new RegExp(`coin-${denomination}`));
+  assert.match(markup, /Redondeo visual a 1 copper · ROUND_HALF_UP/);
+  assert.match(markup, /<summary>Ver valor exacto · sin redondeo<\/summary>/);
+  assert.match(markup, /85490.12345000000000000001/);
+  assert.doesNotMatch(markup, /<img|https?:/);
+});
+
+test("slope remains a rate and only monetary MetricValue units receive coins", () => {
+  const slope = render(MetricCard, { label: "Pendiente", metric: metric("-1600.5", "copper/scan_index") });
+  assert.match(slope, /−1600,5/); assert.match(slope, /copper \/ índice/); assert.match(slope, /technical-rate/);
+  assert.doesNotMatch(slope, /coin-amount|≈/);
+  for (const unit of ["percent", "units", "ratio", "scan_index", "coefficient"]) {
+    const markup = render(MetricCard, { label: unit, metric: metric("85490.25", unit) });
+    assert.doesNotMatch(markup, /coin-amount|coin-denomination|money-value/);
+    assert.match(markup, /85490,25/);
+  }
+  for (const status of ["no_data", "undefined", "insufficient_data"]) {
+    assert.doesNotMatch(render(MetricCard, { label: "Sin monto", metric: metric(null, "copper", status) }), /coin-amount/);
+  }
+});
 test("compact decimals indicate truncation without rounding", () => {
   assert.deepEqual(compactExact("69.99999"), { text: "69,99…", shortened: true });
   assert.deepEqual(compactExact("-0.009"), { text: "−0,00…", shortened: true });
   const markup = render(MetricCard, { label: "Promedio", metric: metric("69.99999") });
   assert.match(markup, /Ver valor exacto/);
-  assert.match(markup, /69,99999 cobre/);
+  assert.match(markup, /69.99999/);
+  assert.match(markup, /aproximadamente 70 cobre/);
 });
 test("trend sign uses exact decimal, including tiny slopes and explicit zero", () => {
   assert.equal(trendLabel(metric("-0.000000000000000000000000001")), "Tendencia descendente");

@@ -41,6 +41,7 @@ def ts(schema):
     return {"string": "string", "integer": "number", "number": "number", "boolean": "boolean", "null": "null"}[schema["type"]]
 
 collect("MarketMetricsResponse")
+collect("MarketSignalsResponse")
 collect("SeriesDiscoveryResponse")
 lines = ["// Generated from FastAPI OpenAPI. Run scripts/generate-api-contracts.py; do not edit."]
 for name, schema in sorted(selected.items()):

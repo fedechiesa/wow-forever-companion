@@ -1,4 +1,5 @@
 import type { BucketPoint, MetricValue } from "../../api/generated";
+import { splitCopper } from "./currency";
 
 const DECIMAL = /^[+-]?\d+(?:\.\d+)?$/;
 function parts(value: string) {
@@ -10,11 +11,7 @@ function parts(value: string) {
 
 // Keep all fractional copper exactly as FastAPI serialized it.
 export function copperToCoins(value: string | number): string {
-  if (typeof value === "number" && !Number.isSafeInteger(value)) throw new Error("Copper numérico fuera del rango entero seguro");
-  const { negative, integer, fraction } = parts(String(value));
-  const gold = integer / 10000n;
-  const silver = integer % 10000n / 100n;
-  const copper = integer % 100n;
+  const { negative, gold, silver, copper, fraction } = splitCopper(value);
   const coins = [];
   if (gold) coins.push(`${gold} oro`);
   if (silver || gold) coins.push(`${silver} plata`);
