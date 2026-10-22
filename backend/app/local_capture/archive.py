@@ -6,6 +6,7 @@ No promise of protection against an administrator or a hostile directory owner.
 """
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -244,7 +245,8 @@ def _publish(stage, final):
 
 
 def capture_file(source: Path, destination: Path | None = None, *, origin_id=None,
-                 source_version=None, serialized_codec=None, market_mapping=None) -> CaptureResult:
+                 source_version=None, serialized_codec=None, market_mapping=None,
+                 expected_source_sha256: str | None = None) -> CaptureResult:
     """Validate the exact bytes read, then archive them. Does not import any data.
 
     A retry can use either the original source or a retained pending/Auctionator.lua.
@@ -256,10 +258,17 @@ def capture_file(source: Path, destination: Path | None = None, *, origin_id=Non
         origin = Origin(origin_id=origin_id)
         if source_version not in (None, "340", "341"):
             raise CaptureError("invalid_options")
+        if expected_source_sha256 is not None and (
+            not isinstance(expected_source_sha256, str) or len(expected_source_sha256) != 64
+            or any(c not in "0123456789abcdef" for c in expected_source_sha256)
+        ):
+            raise CaptureError("invalid_options")
         try:
             raw = _read_stable(source)
         except OSError:
             raise CaptureError("source_unavailable") from None
+        if expected_source_sha256 is not None and sha256(raw).hexdigest() != expected_source_sha256:
+            raise CaptureError("source_changed")
         try:
             decoded = CaptureAdapter().decode_bytes(raw, serialized_codec=serialized_codec,
                                                    market_mapping=market_mapping)

@@ -584,10 +584,27 @@ con hashes por mercado. La hora UTC es adquisición local, no hora del scan.
 Contrato, recuperación, privacidad, límites y pruebas:
 [PHASE_5A1_LOCAL_CAPTURE.md](docs/PHASE_5A1_LOCAL_CAPTURE.md).
 
-**5A.2 pendiente:** detector de cambios con debounce, estabilización y reintentos
-acotados que invoque este núcleo. Todavía no hay observador automático ni envío
-al backend. La validación final de 5A.1 incluyó dos capturas auténticas y fixtures
-sintéticos para comprobar cambios de configuración sin cambios de mercado.
+**5A.2 implementada:** watcher por polling de una ruta configurable,
+con debounce, estabilización, reintentos acotados y salida con Ctrl+C. Invoca el
+mismo núcleo 5A.1; no requiere un servicio de Windows ni envía datos al backend.
+Desde la raíz, ingresar el SavedVariables **real** dentro de `WTF` de Forever:
+
+```powershell
+$foreverSavedVariables = Read-Host 'Ruta completa de Auctionator.lua real dentro de WTF'
+.\backend\.venv\Scripts\python.exe -X utf8 -B .\backend\scripts\watch_auctionator.py `
+  $foreverSavedVariables --source-version 341 --serialized-codec cbor-definite
+```
+
+La carpeta de copias históricas no es el origen en vivo. Las simulaciones usan
+un archivo temporal independiente y un archivo de capturas separado; ninguna
+ruta personal está fijada en el programa. El directorio padre del origen debe
+existir, aunque el archivo puede aparecer después. Configuración, mensajes,
+límites y resultados en [PHASE_5A2_LOCAL_WATCHER.md](docs/PHASE_5A2_LOCAL_WATCHER.md).
+Detener con **Ctrl+C** en esa terminal. El polling puede perder estados intermedios;
+la estabilidad del archivo no prueba el fin de un escaneo. La primera prueba
+con un **`/reload` real de WoW Forever sigue pendiente**.
+La validación final de 5A.1 incluyó dos capturas auténticas y fixtures sintéticos
+para comprobar cambios de configuración sin cambios de mercado.
 
 El archivador conserva precios enteros exactos hasta `2**63-1` (64 bits con signo).
 La ingestión actual mantiene su límite de `2**31-1` (32 bits); cantidades e índices

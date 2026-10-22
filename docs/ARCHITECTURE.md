@@ -489,9 +489,20 @@ conocido. Hashes canónicos por mercado permiten separar evidencia de archivo y
 novedad de estado sin crear puntos económicos desde cambios de configuración.
 La hora de adquisición UTC no es hora de scan; los buckets siguen siendo índices.
 
-5A.2 añadirá detección y estabilización sobre esta función. No se conecta esta
-fase con PostgreSQL ni con los motores 3A/3B. Contrato, privacidad, algoritmos,
-uso manual y validación en [PHASE_5A1_LOCAL_CAPTURE.md](PHASE_5A1_LOCAL_CAPTURE.md).
+5A.2 agrega `local_capture/watcher.py` y `scripts/watch_auctionator.py`: polling
+de una ruta elegida, SHA-256 por inspección, espera de estabilidad y reintentos
+con pausa de recuperación. El observador no parsea Lua ni decide deduplicación:
+invoca `capture_file()` con un hash esperado restrictivo para rechazar cambios
+entre observación y captura. Un reinicio reutiliza el archivo persistido de 5A.1.
+Origen de juego, simulación con copias y archivo de capturas tienen ubicaciones
+independientes; no se fija una ruta personal ni se descubre el cliente recorriendo
+discos. CLI en primer plano, sin servicio ni conexiones con PostgreSQL/3A/3B.
+El polling puede perder estados intermedios y la estabilidad física no confirma
+el fin de un escaneo del juego. La primera prueba con un `/reload` real de
+WoW Forever sigue pendiente; la validación realizada usó simulaciones externas.
+
+Contrato y archivado: [PHASE_5A1_LOCAL_CAPTURE.md](PHASE_5A1_LOCAL_CAPTURE.md).
+Observación, configuración y límites: [PHASE_5A2_LOCAL_WATCHER.md](PHASE_5A2_LOCAL_WATCHER.md).
 
 ## Contrato de snapshot completo de Fase 2
 
