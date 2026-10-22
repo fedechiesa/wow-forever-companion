@@ -458,6 +458,41 @@ en estas fases. La validación con SavedVariables auténticos de Forever sigue p
 Ver [validación de 4A](PHASE_4A_VALIDATION.md) y
 [simplificación y correcciones de 4A.1](PHASE_4A1_VALIDATION.md).
 
+## Captura local manual de Fase 5A.1
+
+`backend/app/local_capture` y `backend/scripts/capture_auctionator.py` incorporan
+el núcleo local sin observador automático ni nuevas dependencias. No importan
+configuración de la aplicación, persistencia ni servicios HTTP. Reutilizan
+`AuctionatorAdapter.decode_bytes()` para validar evidencia nativa sin fabricar
+región, dataset o identidad de importación. `load_bytes()` mantiene los contratos
+anteriores del importador.
+
+`local_capture/decoder.py` admite precios enteros locales de 0 a `2**63-1`,
+manteniendo cantidades e índices en 0 a `2**31-1`. Los modelos de ingestión
+conservan el límite de 32 bits y se revalidan al construir un batch. Antes de
+sincronizar deberá resolverse explícitamente la compatibilidad entre precios
+locales de 64 bits, contratos de API y almacenamiento; 5A.1 no amplía ingestión.
+
+```text
+Ruta SavedVariables -> lectura estable acotada -> validación Lua/CBOR existente
+  -> SHA-256 de bytes + hashes canónicos de evidencia por mercado
+  -> pending/<hash>/{Auctionator.lua,metadata.json}
+  -> verificación + publicación por rename -> captures/<hash>/
+```
+
+El archivo original y el metadato son copias independientes de sólo lectura,
+fuera del proyecto por defecto y obligatoriamente fuera de él al configurar el
+destino. No se usa sólo `.gitignore` como protección. Un lock de SO serializa
+publicaciones; los fallos posteriores conservan evidencia pendiente recuperable.
+Cada hash completo distinto conserva su original, incluso si el mercado ya era
+conocido. Hashes canónicos por mercado permiten separar evidencia de archivo y
+novedad de estado sin crear puntos económicos desde cambios de configuración.
+La hora de adquisición UTC no es hora de scan; los buckets siguen siendo índices.
+
+5A.2 añadirá detección y estabilización sobre esta función. No se conecta esta
+fase con PostgreSQL ni con los motores 3A/3B. Contrato, privacidad, algoritmos,
+uso manual y validación en [PHASE_5A1_LOCAL_CAPTURE.md](PHASE_5A1_LOCAL_CAPTURE.md).
+
 ## Contrato de snapshot completo de Fase 2
 
 El adaptador de snapshots completos produce una estructura equivalente a:

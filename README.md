@@ -556,20 +556,49 @@ y export representa un estado sellado seleccionado. Ninguno garantiza precio act
 ventas, demanda o rentabilidad. Implementación, pruebas y pendiente de captura real:
 [PHASE_3B2_VALIDATION.md](docs/PHASE_3B2_VALIDATION.md).
 
-## Roadmap: Fase 5A — Local Capture Companion
+## Fase 5A — Local Capture Companion
 
-Próxima fase prevista, **sin implementar todavía**: programa local para Windows
-que detecte actualizaciones del SavedVariables tras `/reload` o salida normal,
-espere a que termine la escritura y valide/archive una copia independiente.
-Deberá distinguir cambios de precios de cambios de configuración, evitar
-duplicados por hash y mantener trazabilidad de cada captura. Su primera entrega
-no tendrá acceso a PostgreSQL ni envío automático.
+**5A.1 implementada:** núcleo manual en `backend/app/local_capture` y CLI
+`backend/scripts/capture_auctionator.py`. Reutiliza el parser offline existente,
+valida una lectura estable y archiva originales independientes y metadatos de
+sólo lectura. No necesita PostgreSQL ni configuración `.env`.
+
+Desde la raíz, después de `/reload` o salida normal y una vez terminada la escritura:
+
+```powershell
+$auctionatorFile = 'D:\WoW\WTF\Account\MI_CUENTA\SavedVariables\Auctionator.lua'
+.\backend\.venv\Scripts\python.exe -B .\backend\scripts\capture_auctionator.py `
+  $auctionatorFile --source-version 341 --serialized-codec cbor-definite
+```
+
+El destino predeterminado es `%LOCALAPPDATA%\WoWForeverCompanion\local-capture`.
+`--destination` permite otro directorio privado; cualquier ruta dentro de este
+proyecto se rechaza mediante código, sin depender de `.gitignore`.
+La versión seleccionada no es una detección del addon; Lua sin serializar no
+requiere codec. No se infieren región, dataset, build ni fechas desde buckets.
+
+Mismos bytes reutilizan la captura por SHA-256. Un archivo distinto con mercado
+canónico equivalente conserva su propia evidencia sin crear otro estado
+económico. Cambios nativos `l/h/a/m` y estructura se identifican por separado,
+con hashes por mercado. La hora UTC es adquisición local, no hora del scan.
+Contrato, recuperación, privacidad, límites y pruebas:
+[PHASE_5A1_LOCAL_CAPTURE.md](docs/PHASE_5A1_LOCAL_CAPTURE.md).
+
+**5A.2 pendiente:** detector de cambios con debounce, estabilización y reintentos
+acotados que invoque este núcleo. Todavía no hay observador automático ni envío
+al backend. La validación final de 5A.1 incluyó dos capturas auténticas y fixtures
+sintéticos para comprobar cambios de configuración sin cambios de mercado.
+
+El archivador conserva precios enteros exactos hasta `2**63-1` (64 bits con signo).
+La ingestión actual mantiene su límite de `2**31-1` (32 bits); cantidades e índices
+locales también conservan ese límite. Compatibilizar precios de 64 bits con los
+contratos de API y persistencia queda pendiente antes de una futura sincronización.
 
 Después se estudiarán sincronización autenticada con backend, histórico y
 análisis económico reales, estacionalidad semanal y posibles modelos predictivos.
 El objetivo de dos a cuatro escaneos diarios es **manual**, sin automatización
-dentro del juego. Existe una segunda captura posterior informada por el operador;
-su evolución se validará más adelante, fuera de Git.
+dentro del juego. Las capturas auténticas siguen fuera de Git y no se importaron
+durante esta entrega.
 
 ## Principio guia
 
