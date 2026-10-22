@@ -5,6 +5,8 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from app.db.connection import connect
+from app.db.trial import TrialDatabase
+from app.ingestion.partial_contracts import Auctionator341Batch, PartialBatch
 from app.ingestion.adapters.auctionator import PartialAdapterResult
 from app.ingestion.partial_contracts import PartialImportResult
 from app.ingestion.native_exports import NativeExportEvidence
@@ -13,18 +15,41 @@ from app.ingestion.native_exports import NativeExportEvidence
 class PartialIngestionService:
     deadlock_attempts = 3
 
-    def __init__(self, connection_factory=None, *, redact_errors=False):
+    def __init__(self, connection_factory=None, *, redact_errors=False, trial_target=None):
+        if trial_target is not None and (not isinstance(trial_target, TrialDatabase) or connection_factory is not None):
+            raise ValueError("a TrialDatabase must exclusively own the trial connection")
         self._connection_factory = connection_factory
-        self._redact_errors = redact_errors
+        self._trial_target = trial_target
+        self._redact_errors = redact_errors or trial_target is not None
 
     def _connect(self):
+        if self._trial_target is not None:
+            return self._trial_target.connection()
         return (self._connection_factory or connect)()
 
     def import_batch(self, result: PartialAdapterResult) -> PartialImportResult:
+        extended = result.batch.source_version != "340" or result.batch.dataset == "stress_test" or (
+            result.native is not None and (
+                result.native.decoder_version != "auctionator340-v1"
+                or result.native.input_format not in ("lua_tables", "libcbor", "mixed")
+                or result.native.provenance is not None
+            )
+        )
+        if extended:
+            if self._trial_target is None:
+                raise ValueError("offline-only without verified metadata and a TrialDatabase target")
+            batch_type = Auctionator341Batch if result.batch.source_version == "341" else PartialBatch
+            batch_type.model_validate(result.batch.model_dump())
+            if result.native is None or result.native.provenance is None:
+                raise ValueError("verified capture provenance and native evidence are required")
+            if result.native.decoder_version != "auctionator-v8-v2":
+                raise ValueError("extended profiles require the versioned v8 decoder")
         if not re.fullmatch(r"[0-9a-f]{64}", result.source_hash):
             raise ValueError("source_hash must be SHA-256")
         if result.native is not None:
             native = NativeExportEvidence.model_validate(result.native.model_dump())
+            if native.provenance is not None:
+                native.provenance.validate_context(result.batch, result.source_hash, native.markets, native.input_format)
             def identities(observations):
                 return sorted((o.market_key, o.ruleset, o.item_key, o.external_item_id, o.key_kind,
                                -1 if o.scan_day is None else o.scan_day, o.statistic, o.value)
@@ -57,6 +82,15 @@ class PartialIngestionService:
 
     def _create_run(self, connection, result, status, error=None):
         b = result.batch
+        if b.source_version == "341" or (result.native and result.native.decoder_version == "auctionator-v8-v2"):
+            try:
+                ready = connection.execute(
+                    "SELECT 1 FROM public.schema_migrations WHERE id='005_auctionator_341_provenance.sql'"
+                ).fetchone()
+            except psycopg.Error:
+                raise ValueError("trial destination is not prepared for extended Auctionator metadata") from None
+            if not ready:
+                raise ValueError("trial destination is not prepared for extended Auctionator metadata")
         row = connection.execute(
             """INSERT INTO partial_import_runs
                (source_type, source_id, source_version, database_version, dataset,

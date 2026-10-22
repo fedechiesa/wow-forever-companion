@@ -28,7 +28,7 @@ def lab():
     with TrialDatabase(dsn, settings.database_url, name) as target:
         with target.connection() as c:
             migrations = c.execute("SELECT id FROM public.schema_migrations ORDER BY id").fetchall()
-            assert len(migrations) == 4
+            assert len(migrations) == 5
     return dsn, name
 
 

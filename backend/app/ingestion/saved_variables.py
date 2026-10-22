@@ -185,10 +185,11 @@ class LuaReader:
 
 
 class CBORReader:
-    """Subset emitted by the inspected LibCBOR serializer: definite values only.
+    """Bounded definite CBOR subset verified against LibCBOR and a 341 capture.
 
     Both string types retain bytes (LibCBOR's UTF8 strings can contain binary).
     Tags, indefinite lengths, floats and extensions deliberately fail closed.
+    Successful decoding identifies the supported structure, not its producer.
     """
     def __init__(self, raw: bytes, *, budget=None):
         if len(raw) > MAX_BYTES:

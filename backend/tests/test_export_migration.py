@@ -63,7 +63,7 @@ def test_004_preserves_16628_legacy_rows_phase2_and_no_fictitious_backfill(test_
             before = fingerprint(c)
             assert before["partial_observations"][0] == 16628
             assert before["auction_snapshots"][0] == 7 and before["auction_snapshot_items"][0] == 69
-        assert migrations.run_migrations() == ["004_create_partial_export_evidence.sql"]
+        assert migrations.run_migrations() == ["004_create_partial_export_evidence.sql", "005_auctionator_341_provenance.sql"]
         assert migrations.run_migrations() == []
         with connect() as c:
             after = fingerprint(c)

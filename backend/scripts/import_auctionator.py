@@ -15,6 +15,7 @@ try:
     from app.ingestion.partial_service import PartialIngestionService
     from app.core.config import settings
     from app.db.trial import TrialDatabase, TrialSafetyError
+    from app.ingestion.capture_provenance import load_capture_provenance
 except Exception:
     _INITIALIZATION_FAILED = True
 
@@ -23,14 +24,18 @@ def main(argv=None):
     if _INITIALIZATION_FAILED:
         print("CLI initialization failed; check configuration privately. Details withheld.", file=sys.stderr)
         return 1
-    parser = argparse.ArgumentParser(description="Import literal Auctionator 340 SavedVariables")
+    parser = argparse.ArgumentParser(description="Import bounded Auctionator v8 SavedVariables")
     parser.add_argument("file", type=Path, nargs="?")
     parser.add_argument("--source-id", help="Stable account/export identity and clock context")
     parser.add_argument("--region", help="Explicit source region; not present in SavedVariables")
-    parser.add_argument("--dataset", choices=["real", "simulated"])
+    parser.add_argument("--dataset", choices=["real", "simulated", "stress_test"])
+    parser.add_argument("--source-version", choices=["340", "341"], default="340")
+    parser.add_argument("--provenance-file", type=Path, help="Private JSON with verified capture context and evidence references")
     parser.add_argument("--market-map", type=Path, help="JSON mapping raw market keys to PvE/PvP/HC/RP")
     parser.add_argument("--scan-day-zero", help="Verified ISO timestamp of client SCAN_DAY_0; otherwise unknown")
-    parser.add_argument("--allow-libcbor", action="store_true", help="Explicitly select inspected LibCBOR encoding")
+    codec = parser.add_mutually_exclusive_group()
+    codec.add_argument("--allow-libcbor", action="store_true", help="Explicitly select inspected LibCBOR encoding")
+    codec.add_argument("--serialized-codec", choices=["cbor-definite"], help="Explicitly select bounded definite CBOR, without asserting its producer")
     parser.add_argument("--trial", action="store_true", help="Require a verified, isolated PostgreSQL target")
     parser.add_argument("--database-url-env", help="Name of environment variable holding the private target DSN")
     parser.add_argument("--expected-database", help="Exact isolated database name, ending in _test")
@@ -45,7 +50,20 @@ def main(argv=None):
         parser.error("Target selection and --check-target require --trial")
     if not args.check_target and (args.file is None or not args.source_id or not args.region or not args.dataset):
         parser.error("file, --source-id, --region and --dataset are required for import")
+    extended = args.source_version == "341" or args.serialized_codec is not None or args.dataset == "stress_test" or args.provenance_file is not None
+    if extended and not args.trial:
+        parser.error("Extended Auctionator profiles require --trial")
+    if extended and not args.check_target and args.provenance_file is None:
+        parser.error("Extended Auctionator profiles require --provenance-file")
     try:
+        args.provenance = None
+        if extended and not args.check_target:
+            args.provenance = load_capture_provenance(args.provenance_file)
+            p = args.provenance
+            if (p.format_version, p.source_id, p.region, p.dataset) != (
+                args.source_version, args.source_id, args.region, args.dataset
+            ):
+                raise ValueError("capture metadata and CLI context disagree")
         if not args.trial:
             print(PartialIngestionService().import_batch(load(args)).model_dump_json())
             return 0
@@ -59,7 +77,8 @@ def main(argv=None):
             }}))
             if not args.check_target:
                 result = load(args)
-                service = PartialIngestionService(target.connection, redact_errors=True)
+                service = (PartialIngestionService(trial_target=target, redact_errors=True) if extended
+                           else PartialIngestionService(target.connection, redact_errors=True))
                 print(service.import_batch(result).model_dump_json())
         return 0
     except TrialSafetyError as error:
@@ -76,6 +95,7 @@ def load(args):
         args.file, source_id=args.source_id, region=args.region,
         dataset=args.dataset, market_mapping=mapping,
         scan_day_zero=args.scan_day_zero, allow_libcbor=args.allow_libcbor,
+        source_version=args.source_version, serialized_codec=args.serialized_codec, provenance=args.provenance,
     )
 
 

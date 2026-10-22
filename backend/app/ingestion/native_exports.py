@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.ingestion.auctionator_keys import normalize_item_key
 from app.ingestion.partial_contracts import MAX_OBSERVATIONS, PartialObservation, Ruleset
+from app.ingestion.capture_provenance import CaptureProvenance
 
 NativeField = Literal["l", "h", "a", "m"]
 FIELD_STATISTIC = {"l": "daily_minimum", "h": "daily_highest_minimum",
@@ -83,8 +84,9 @@ class NativeExportEvidence(BaseModel):
     canonical_version: Literal[1] = 1
     markets: list[NativeMarketShape] = Field(max_length=MAX_OBSERVATIONS)
     facts: list[NativeFact] = Field(min_length=1, max_length=MAX_OBSERVATIONS)
-    input_format: Literal["lua_tables", "libcbor", "mixed"]
-    decoder_version: Literal["auctionator340-v1"] = "auctionator340-v1"
+    input_format: Literal["lua_tables", "libcbor", "cbor_definite", "mixed"]
+    decoder_version: Literal["auctionator340-v1", "auctionator-v8-v2"] = "auctionator340-v1"
+    provenance: CaptureProvenance | None = None
 
     @model_validator(mode="after")
     def coherent(self):
@@ -147,7 +149,10 @@ class NativeExportEvidence(BaseModel):
             for item in data["items"]:
                 item["fields_present"] = sorted(item["fields_present"])
             markets.append(data)
-        return {"version": 1, "markets": markets}
+        result = {"version": 1, "markets": markets}
+        if self.provenance is not None:
+            result["provenance"] = self.provenance.stored_manifest()
+        return result
 
     def state_hash(self, batch):
         payload = batch.model_dump(mode="json", exclude={"observations"})

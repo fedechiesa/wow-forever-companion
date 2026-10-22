@@ -2,7 +2,7 @@
 
 WoW Forever Companion es un proyecto personal de portfolio y una herramienta pensada para acompanar el juego desde el lanzamiento de WoW Forever. El foco inicial es construir Market Intelligence para el Auction House: analizar mínimos guardados, disponibilidad máxima, cambios y dispersión a partir de evidencia histórica. Las oportunidades pertenecen a una fase posterior.
 
-Auctionator 340 es la fuente candidata para observaciones parciales de precios y disponibilidad. Su integración se basa en código local inspeccionado y sigue pendiente de un SavedVariables real de Forever. Los snapshots completos de Fase 2 conservan su contrato independiente.
+Auctionator 340 y 341 aportan observaciones parciales de precios y disponibilidad. La compatibilidad offline de 341 se comprobó con un SavedVariables auténtico de la stress test del 21/10/2026: siete items en un único índice nativo, 2485. La persistencia está preparada y probada con fixtures en laboratorio, pero **todavía no se importaron capturas auténticas**. Siguen pendientes región técnica y procedencia completa; el build en el momento de captura y el productor efectivo del codec no están confirmados. Los snapshots completos de Fase 2 conservan su contrato independiente.
 
 ## Objetivo de v0.1
 
@@ -269,7 +269,9 @@ La suite exige un nombre terminado en `_test`, diferente del nombre de la base d
 
 ## Fase 2.5: Auctionator y mercado fresh simulado
 
-Implementación con validación real de Forever todavía pendiente. No incluye Market Intelligence.
+La etapa original se validó con simulación. La integración 341 posterior tiene
+compatibilidad offline auténtica comprobada y persistencia protegida preparada
+para revisión de trial. No se importaron sus capturas a PostgreSQL.
 La [investigación de Auctionator 340](docs/AUCTIONATOR_340.md) detalla evidencia,
 formatos soportados y límites. El addon ofrece mínimos diarios, mayor mínimo diario,
 disponibilidad máxima y último mínimo sin fecha. No ofrece ventas, promedio de
@@ -293,19 +295,18 @@ son **SIMULATED**. Los tres archivos generados (Lua, catálogo y contexto) queda
 en `data/imports/fresh/`, ignorados por Git. Opciones: `--seed`, `--days`, `--items`,
 `--markets` y `--output`. No se representan ventas ni auction_count.
 
-Para un archivo real, usar una identidad estable de cuenta/export y región explícita:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\import_auctionator.py C:\ruta\Auctionator.lua --source-id cuenta-local-reloj-original --region wow-forever --dataset real
-# Si la clave es realm/facción, agregar --market-map C:\ruta\markets.json
-# Ejemplo de ese JSON: { "Everlook Alliance": "PvE" }, sólo si el ruleset está confirmado.
-# Sólo para serialización LibCBOR verificada: --allow-libcbor
-# Sólo con base temporal comprobada: --scan-day-zero "2020-01-01T00:00:00Z"
-```
+Para capturas auténticas 341, seguir [la validación real](docs/FIRST_REAL_AUCTIONATOR_VALIDATION.md)
+y [el procedimiento de trial](docs/BETA_DATA_READINESS.md#14-persistencia-341-con-procedencia-verificada-y-destino-trial).
+El perfil explícito `cbor-definite`, la migración 005, la procedencia vinculada al
+hash y el destino `--trial` verificado son obligatorios para ese flujo. La stress
+test usa un dataset independiente `stress_test`; no representa el lanzamiento.
+No completar la región por idioma, ubicación o nombre PvP.
 
 Sin base temporal se guarda el índice del addon; no se asume UTC ni la fecha de
-importación como observación. No se anuncia soporte para el codec nativo del cliente.
-El parser de literales Lua/LibCBOR aplica límites de tamaño/profundidad y no ejecuta código.
+importación como observación: 2485 no equivale directamente a una fecha civil.
+Se admite el subconjunto CBOR acotado comprobado en 341, sin atribuirle un productor
+confirmado ni anunciar soporte completo de toda serialización nativa del cliente.
+Los lectores Lua/CBOR aplican límites de tamaño/profundidad/tipos y no ejecutan código.
 
 Consultas, con el backend iniciado:
 
@@ -554,6 +555,21 @@ Datos de desarrollo **SIMULATED**; accumulated puede revisarse por imports poste
 y export representa un estado sellado seleccionado. Ninguno garantiza precio actual,
 ventas, demanda o rentabilidad. Implementación, pruebas y pendiente de captura real:
 [PHASE_3B2_VALIDATION.md](docs/PHASE_3B2_VALIDATION.md).
+
+## Roadmap: Fase 5A — Local Capture Companion
+
+Próxima fase prevista, **sin implementar todavía**: programa local para Windows
+que detecte actualizaciones del SavedVariables tras `/reload` o salida normal,
+espere a que termine la escritura y valide/archive una copia independiente.
+Deberá distinguir cambios de precios de cambios de configuración, evitar
+duplicados por hash y mantener trazabilidad de cada captura. Su primera entrega
+no tendrá acceso a PostgreSQL ni envío automático.
+
+Después se estudiarán sincronización autenticada con backend, histórico y
+análisis económico reales, estacionalidad semanal y posibles modelos predictivos.
+El objetivo de dos a cuatro escaneos diarios es **manual**, sin automatización
+dentro del juego. Existe una segunda captura posterior informada por el operador;
+su evolución se validará más adelante, fuera de Git.
 
 ## Principio guia
 

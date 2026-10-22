@@ -2,6 +2,10 @@
 
 Fecha de revisión: **2026-10-15**, America/Buenos_Aires. Investigación original sobre `85bd0e1`; actualización de seguridad sobre `4b93efc`, rama `main`, sin commit de implementación todavía.
 
+**Actualización 21/10/2026: soporte de persistencia 341 preparado para revisión de trial, no autorización de importación auténtica.** La captura real y la validación offline están en [FIRST_REAL_AUCTIONATOR_VALIDATION.md](FIRST_REAL_AUCTIONATOR_VALIDATION.md). Las secciones 1–13 siguientes conservan el estado histórico del 15/10; para 341, metadatos verificados y segregación de stress test prevalece la sección 14. La región de la captura sigue pendiente.
+
+**Cierre técnico:** ver sección 15 para la auditoría y suite completa final. La documentación histórica de cada etapa no constituye autorización de importar capturas auténticas.
+
 **Estado: preparados para intentar captura y validación offline; NO GO todavía para usar datos auténticos en análisis de mercado.** No se recibió ni validó un SavedVariables real de Forever. El 19/10/2026 es la fecha de captura prevista por el usuario; este documento no verifica el calendario oficial ni la disponibilidad de la beta.
 
 La entrega documental original no ejecutó tests ni operaciones en PostgreSQL. La actualización de seguridad sí agrega un modo de ensayo y pruebas con fixtures, exclusivamente en un laboratorio nuevo; sus resultados están en la sección 13. No se obtuvo un SavedVariables auténtico ni se alteraron datos existentes de desarrollo/tests. Los comandos de captura/importación de datos reales siguen siendo instrucciones para una ejecución futura.
@@ -399,3 +403,101 @@ Los **184 tests** y hashes anteriores corresponden a la validación inicial, pre
 Validación final de este hardening (15/10/2026): **214 tests aprobados**, incluidos 58 casos unitarios de guard/CLI y procesos reales de inicialización. Se ejecutó el conjunto completo indicado, agregando la suite de startup; la integración se dirigió exclusivamente al laboratorio ya autorizado `wow_beta_guard_7af27fd1381d_test` (OID 339038), después de comprobar su identidad y las migraciones 001–004. Se repitieron ambos contraejemplos originales y fueron rechazados antes del escritor o sin revelar credenciales, respectivamente. El único aviso fue la deprecación existente de Starlette/httpx.
 
 El control de todas las filas por tabla y de `last_value/is_called` de las 11 secuencias coincidió exactamente antes/después en desarrollo (13 tablas, 16.785 filas, incluidas 16.628 observaciones parciales) y en la base de tests existente (13 tablas, 4 filas). El laboratorio pasó de 232 a 340 filas por los fixtures autorizados y sus secuencias pudieron avanzar; no se presenta como preservado ni como captura real. No hubo cambios de roles/permisos, archivos `.env` reales, configuración global de Settings, migraciones ni contratos Auctionator. `git diff --check` y la revisión equivalente de archivos nuevos no detectaron errores de whitespace. No hubo commit ni push. Veredicto técnico: **READY TO COMMIT**, exclusivamente dentro del alcance directo/estable documentado; no certifica datos auténticos ni proxies.
+
+## 14. Persistencia 341 con procedencia verificada y destino trial
+
+Actualización del **21/10/2026**, sin commit ni push. El SavedVariables auténtico fue validado offline; **no se importó**, ni siquiera al laboratorio. La preparación técnica está **READY FOR TRIAL REVIEW**, con NO GO para ejecutar la captura mientras falten región/contexto y revisión humana.
+
+### Cambio de alcance respecto de la etapa offline
+
+El modelo l/h/a/m, items, variantes, buckets y transacciones no necesitó nuevas columnas ni tablas. Se añadió [005_auctionator_341_provenance.sql](../backend/migrations/005_auctionator_341_provenance.sql) porque los CHECK existentes sólo admitían versión 340, tres etiquetas de input y un decoder. La migración amplía exclusivamente restricciones de metadatos, agrega comprobaciones de procedencia para 341 y un trigger complementario de transporte; mantiene intactos todos los guards de sellado, inmutabilidad, coherencia y contexto de 004. No cambia filas, no hace backfill ni crea secuencias. Los CHECK ampliados se agregan `NOT VALID` y se validan dentro de la transacción de migración; las versiones originales 003/004 no se editan.
+
+`CaptureProvenance` contiene attestaciones explícitas del operador, separadas de los hechos del Lua. Se guarda en `structure_manifest.provenance`, ya protegido por el sello existente. La recepción conserva codec/perfil y decoder en `partial_export_imports`, versión en el run/export y hash de bytes en `partial_import_runs`. No se etiqueta el productor como confirmado por haber decodificado CBOR.
+
+El hash de archivo de los metadatos debe coincidir con los bytes leídos. Se excluye sólo ese hash del manifest canónico porque ya queda en cada recepción: dos serializaciones equivalentes con igual contexto pueden reutilizar el export, conservando ambas recepciones y sus hashes originales. Los refs/claims y el contexto sí participan del estado canónico; cambiar una attestation produce evidencia distinta. Los manifests 340 sin procedencia conservan exactamente su forma y hash anteriores.
+
+### Segregación de stress test
+
+Para esta captura el contexto requerido es **`dataset=stress_test`, `capture_phase=stress_test`, `source_type=auctionator`**. Continúan siendo datos auténticos; `stress_test` expresa su contexto y no los convierte en simulación. La unicidad existente `(region, market_key, dataset)` crea mercados distintos de `real` (lanzamiento/u otro contexto real) y `simulated`. Las observaciones dependen de ese market_id y mantienen además fuente y base temporal. La clave nativa `PvP` no se reescribe.
+
+El catálogo global `partial_items` sigue compartido por identidad/variante, como antes; la segregación se aplica al mercado y sus observaciones/exports. El primer ensayo auténtico requerirá su propio laboratorio vacío, separado de simulación y de los fixtures de esta validación. No reutilizar el laboratorio de regresiones como captura de aceptación.
+
+### Evidencia requerida para región, mercado y origen
+
+No se infiere región por idioma, ubicación, huso horario, PvP ni producto `wowf`. Se necesita un identificador técnico verificable del cliente/servicio y evidencia de su asociación con **ese producto, mercado y origen de captura**: registro de configuración/selector oficial o información técnica autoritativa que permita establecer dicha asociación. Una región de cuenta sin vínculo demostrado con el mercado técnico no basta. Si el alcance/facción del AH sigue siendo ambiguo, no certificarlo por el nombre PvP.
+
+El operador debe conservar privadamente un registro que vincule SHA-256, sesión, producto, mercado/alcance y origen, y asignar un `source_id` estable seudónimo para esa cuenta/historia/reloj. `region_evidence_ref`, `market_evidence_ref` y `origin_evidence_ref` deben apuntar a esos registros revisados, mediante refs seudónimos sin credenciales ni datos personales. El software verifica presencia, sintaxis y concordancia; **no autentica automáticamente la verdad de una referencia externa**. La revisión del operador sigue siendo necesaria.
+
+Los claims `installed_client_build`/`installed_addon_version` describen la instalación inspeccionada. `capture_client_build`/`capture_addon_version` sólo se completan con evidencia propia de la sesión; nunca se copian automáticamente. `codec_producer=unverified` y ref nulo son válidos con `cbor-definite`; confirmar un productor exige su ref de evidencia separado. El contexto temporal sigue `scan_day_zero=None` hasta medirlo, sin convertir 2485 a fecha civil.
+
+### Metadatos privados: plantilla deliberadamente incompleta
+
+Guardar fuera de Git. **Esta plantilla no pasa validación hasta reemplazar los pendientes con evidencia revisada**; no autoriza ni prepara automáticamente una importación:
+
+```json
+{
+  "version": 1,
+  "source_sha256": "7d5cf3db48fa78ab19d3a359557470752e634da743cebe42833fb07c10aa458b",
+  "format_version": "341",
+  "source_id": "<SEUDONIMO_ESTABLE_DE_LA_CAPTURA>",
+  "region": "<REGION_TECNICA_VERIFICADA>",
+  "dataset": "stress_test",
+  "capture_phase": "stress_test",
+  "market_rulesets": {"PvP": "PvP"},
+  "region_evidence_ref": "PENDIENTE",
+  "market_evidence_ref": "PENDIENTE",
+  "origin_evidence_ref": "PENDIENTE",
+  "installed_client_build": null,
+  "capture_client_build": null,
+  "installed_addon_version": null,
+  "capture_addon_version": null,
+  "codec_producer": "unverified",
+  "codec_producer_evidence_ref": null
+}
+```
+
+Cada claim conocido usa `{"value":"valor observado","evidence_ref":"ref revisado"}`. Los refs `PENDIENTE`, región ausente/placeholder, JSON duplicado, fase/dataset contradictorios, contexto distinto del CLI, mercados discordantes y hash distinto se rechazan. Se limita el archivo de metadatos a 64 KiB. No hay región ni dataset nuevo seleccionado por defecto.
+
+### Secuencia futura del primer trial auténtico, aún no ejecutada
+
+1. Revisar informe, diff, migración y resultados. Resolver región y contexto de origen/mercado; completar privadamente el JSON. Confirmar el hash original y repetir el adaptador **offline** con ese `CaptureProvenance` para verificar contexto, manifest, 21 hechos, 28 observaciones y proyección.
+2. Obtener autorización explícita para la escritura real. Provisionar un destino aislado, vacío y distinto de desarrollo/tests/regresiones. Seleccionar su DSN privadamente por variable de entorno y nombre exacto terminado en `_test`; no cambiar `DATABASE_URL` ni `.env`.
+3. Verificar identidad efectiva de origen protegido y destino con `TrialDatabase`. Preparar/aplicar las migraciones pendientes **sólo dentro de `TrialDatabase.connection()`**, con su identidad revalidada y tracking de migraciones en ese destino. No usar el comando ordinario `scripts/migrate.py`, cuyo default sigue siendo desarrollo. La migración 005 requiere locks DDL; planificar esa preparación en un laboratorio sin escritores concurrentes.
+4. Ejecutar `--check-target` sin el archivo para una comprobación de identidad sin escritura. Ese preview no valida el Lua ni el JSON y no sustituye los pasos anteriores.
+5. Sólo después de las puertas anteriores y de la revisión final, el comando de importación sería el siguiente desde `backend`; **no se ejecutó con datos auténticos**:
+
+```powershell
+.\.venv\Scripts\python.exe -B scripts/import_auctionator.py $env:BETA_COPY --source-id $env:BETA_SOURCE_ID --region $env:BETA_REGION --dataset stress_test --source-version 341 --serialized-codec cbor-definite --provenance-file $env:BETA_PROVENANCE_FILE --trial --database-url-env BETA_TRIAL_DATABASE_URL --expected-database $trialDatabaseName
+```
+
+`BETA_SOURCE_ID`/`BETA_REGION` deben coincidir exactamente con el JSON; el dataset y formato también. Omitir `--scan-day-zero` mientras sea desconocido. No usar `--allow-libcbor`, quitar evidencia, declarar 340 o convertir a HTTP para sortear el guard. La revisión 341 es selección explícita de formato basada en evidencia disponible, no autodetección del SavedVariables.
+
+El CLI requiere `--trial` y `--provenance-file` para todo perfil nuevo. El servicio exige un objeto `TrialDatabase`, no una factory arbitraria, y valida nuevamente el metadata/batch/evidencia antes de entrar al escritor. La conexión pertenece exclusivamente al target y todas las operaciones, retries y registros de fallo usan `target.connection()`. `TrialDatabase` no cambió: mantiene conexión directa estable, comparación de cluster/OID, verificación del protegido, revalidación en la transacción y mensajes sin credenciales. El servicio comprueba la migración 005 **antes de INSERTar cada run**, incluidos failed, para no consumir secuencias en un destino no preparado.
+
+6. En una futura ejecución autorizada, comprobar por export el sello, el manifest/provenance, origen h_fallback, l vacío, a y m, los 21 hechos/28 observaciones y la repetición idempotente. La aceptación de persistencia no habilita todavía frontend ni cálculos 3A/3B sobre 341: sus contratos no se modificaron en esta tarea y deben evaluarse aparte antes de dirigirles estos datos.
+
+### Pruebas y preservación de esta entrega
+
+Se preparó exclusivamente el laboratorio nuevo `wow_341_persistence_8630425299b0_test` (OID 422588), verificado por `TrialDatabase`, y se aplicaron allí 001–005. Sólo se persistieron fixtures sintéticos, tanto en public como en schemas efímeros de tests dentro de ese laboratorio. No se migró ninguna base existente. No se importó el SavedVariables auténtico; el control final encontró **cero runs con su SHA-256** en el laboratorio.
+
+Resultado: **333 tests aprobados** en el conjunto completo; después del cierre del preflight de schema y del CLI 341 se aprobaron **140 tests focalizados**, con cuatro casos nuevos (**337 casos distintos aprobados**). Incluyen 340, 341, codecs, procedencia, hashes, regiones/contradicciones, variantes, l/h/a/m, equivalencia y repetición, exports distintos, aislamiento stress/launch/simulation, concurrencia, rollback, failed/retry, guards de target y procesos reales de CLI. La captura auténtica se leyó únicamente en la prueba offline. El único warning funcional fue la deprecación existente Starlette/httpx.
+
+La primera preparación de carpetas de pytest falló por ACL de Windows/Python `mkdir(0700)`. Se repitió con una carpeta temporal nueva que hereda la ACL del Temp autorizado, sin cambiar permisos de directorios existentes ni controles de producto. El conjunto final y los casos focalizados terminaron correctamente. Se bloquearon defensivamente las conexiones fuera del laboratorio salvo lecturas del protegido y cualquier intento de crear un run con el hash auténtico; hubo cero intentos de persistencia auténtica.
+
+Antes/después se compararon identidad, hashes de todas las filas por tabla, `last_value/is_called` de todas las secuencias y definiciones de restricciones de las dos bases existentes. **Coincidencia exacta**: desarrollo 13 tablas, 16.785 filas y 11 secuencias; tests existente 13 tablas, cuatro filas y 11 secuencias. Hash agregado de control idéntico: `308c9223cf677c728be3c12509870078e9dd330df2f713a1f959d02143057d23`. Desarrollo conserva sus 16.628 observaciones parciales. Los controles privados contienen conteos/hashes, no filas ni DSNs. Las filas/secuencias del laboratorio sí avanzaron por los fixtures y no se declaran preservadas.
+
+**READY FOR TRIAL REVIEW** describe el código y procedimiento preparados para revisión. La región técnica y la aprobación de la importación real siguen pendientes. Sin commit ni push.
+
+## 15. Cierre técnico de compatibilidad 341
+
+Auditoría final del **21/10/2026**, sobre los cambios de integración y documentación existentes, sin funcionalidades nuevas. Se corrigió una inconsistencia acotada del adaptador: un marcador de versión de mercado presente con null se trataba como ausente. Ahora una clave presente exige exactamente el entero 2; cinco regresiones cubren los marcadores explícitos inválidos. Se mantiene la compatibilidad de marcadores ausentes y de la captura auténtica con versión 2. No se requirió rediseño ni migración adicional.
+
+Se ejecutó **la suite completa del backend: 730 aprobados, uno omitido**, más el warning de deprecación Starlette/httpx ya existente. Se incluyeron las regresiones de 340/341, codec y contratos, exports, ingestión/idempotencia, concurrencia, guards, migraciones y los motores analíticos existentes. El único caso omitido fue el opt-in de captura auténtica, sin `AUCTIONATOR_REAL_CAPTURE`; ninguna prueba obligatoria necesita rutas privadas o el archivo original. La evidencia auténtica offline de las etapas previas conserva su alcance, sin afirmar una nueva validación de esa copia en este cierre.
+
+Para cumplir **cero conexiones a desarrollo**, se prepararon dos bases de laboratorio desechables: target `wow_341_close_target_6bdc10a561_test` y referencia protegida `wow_341_close_protected_928f0886fb_test`. Las variables de selección se limitaron al proceso de tests, sin cambiar `.env`. Un control del driver admitió exclusivamente esas bases y registró 1.376 sesiones, cero intentos fuera de ellas y cero intentos de persistencia auténtica. La referencia permaneció vacía; el target recibió sólo fixtures sintéticos. Se probó nuevamente 005 en destino vacío y su preservación de evidencia 340 sellada. **No se conectó, escribió ni migró desarrollo ni se modificaron sus datos simulados.** Los snapshots de preservación de la sección 14 corresponden a aquella ejecución anterior, no a nuevas lecturas de desarrollo.
+
+Los archivos del commit se limitan a código/tests de integración y documentación; no incluyen Lua auténtico, copias de capturas, credenciales, `.env`, temporales ni bases. `git diff --check` y las comprobaciones de sintaxis/whitespace/enlaces pasaron. El README ahora refleja 341 validado offline, persistencia probada en laboratorio e importación auténtica aún pendiente. La región técnica y procedencia completa siguen sin verificar; build de captura y productor de codec no se dan por confirmados. El índice no se convierte a fecha civil y los datos de stress test no se presentan como mercado de lanzamiento.
+
+Una segunda captura posterior fue informada por el operador y queda fuera de este cierre, sin incorporarla a Git ni anticipar resultados. El roadmap de Fase 5A está en el [README](../README.md): programa Windows para detectar guardados tras `/reload`/salida, esperar escritura completa, validar/archivar una copia independiente, distinguir cambios de precios/configuración, deduplicar por hash y conservar trazabilidad. Primera entrega sin PostgreSQL ni envío automático. Fases posteriores: sincronización autenticada, dos a cuatro escaneos diarios manuales, histórico/análisis reales y estudio de estacionalidad/modelos. Sólo se documentó; no se implementó.
+
+**READY FOR TRIAL REVIEW** sigue siendo el límite de autorización para datos auténticos. El cierre habilita el commit/push autorizado de la integración revisada; no habilita ejecutar el primer trial sin completar las condiciones de la sección 14 y recibir revisión específica.

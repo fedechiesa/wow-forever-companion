@@ -83,6 +83,15 @@ class PartialBatch(BaseModel):
         return self
 
 
+class Auctionator341Batch(PartialBatch):
+    """Extended format; HTTP remains at 340, persistence requires verified trial.
+
+    The caller selects the format version; SavedVariables does not declare it.
+    """
+    source_version: Literal["341"] = "341"
+    dataset: Literal["real", "simulated", "stress_test"]
+
+
 class PartialImportResult(BaseModel):
     import_id: int
     status: Literal["completed", "duplicate", "failed"]

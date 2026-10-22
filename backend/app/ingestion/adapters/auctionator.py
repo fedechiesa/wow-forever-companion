@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 
 from app.ingestion.auctionator_keys import normalize_item_key
-from app.ingestion.partial_contracts import PartialBatch, PartialObservation, Ruleset, MAX_OBSERVATIONS
+from app.ingestion.capture_provenance import CaptureProvenance
+from app.ingestion.partial_contracts import Auctionator341Batch, PartialBatch, PartialObservation, Ruleset, MAX_OBSERVATIONS
 from app.ingestion.native_exports import NativeExportEvidence, NativeFact, NativeItemShape, NativeMarketShape
 from app.ingestion.saved_variables import CBORReader, FormatError, LuaReader, MAX_BYTES, ParseBudget, strip_lua_prefix
 
@@ -44,7 +45,8 @@ class AuctionatorAdapter:
     """Transforms verified v8 evidence without a database dependency.
 
     Region/source identity and legacy ruleset mappings are caller context.
-    Serialized input requires explicit LibCBOR selection; native codec is pending.
+    Serialized input requires an explicit, bounded decoding profile. Selecting
+    cbor-definite describes bytes, not proof of which client serializer ran.
     """
     def load(self, source: Path, **context) -> PartialAdapterResult:
         with Path(source).open("rb") as stream:
@@ -54,7 +56,16 @@ class AuctionatorAdapter:
     def load_bytes(self, raw: bytes, *, source_id: str, region: str,
                    dataset="real", market_mapping: dict[str, Ruleset] | None = None,
                    scan_day_zero=None, allow_libcbor=False,
+                   serialized_codec=None, source_version="340", provenance=None,
                    raw_reference=None) -> PartialAdapterResult:
+        if serialized_codec not in (None, "cbor-definite"):
+            raise FormatError("unsupported serialized codec; use an explicitly verified profile")
+        if allow_libcbor and serialized_codec is not None:
+            raise FormatError("conflicting serialized codec selections")
+        if source_version not in ("340", "341"):
+            raise FormatError("unsupported Auctionator source version")
+        if dataset == "stress_test" and source_version != "341":
+            raise FormatError("stress_test requires source_version=341")
         marker_input = strip_lua_prefix(raw)
         if marker_input.startswith(b"-- SIMULATED prices and availability;") and dataset != "simulated":
             raise FormatError("generated simulation must be imported with dataset=simulated")
@@ -73,13 +84,16 @@ class AuctionatorAdapter:
                 raise FormatError("native structure construction limit exceeded")
             structure_count += 1
 
-        def decode(value):
+        def decode(value, *, from_serialized=False):
             if isinstance(value, bytes):
-                if not allow_libcbor:
-                    raise FormatError("serialized data requires explicit allow_libcbor; native CBOR is unverified")
-                formats.add("libcbor")
+                if not allow_libcbor and serialized_codec is None:
+                    raise FormatError("serialized data requires explicit allow_libcbor or "
+                                      "serialized_codec='cbor-definite'; native serializer identity is unverified")
+                formats.add("cbor_definite" if serialized_codec else "libcbor")
                 return table(CBORReader(value, budget=budget).parse())
-            formats.add("lua_tables")
+            # A table produced by the enclosing CBOR decode is not Lua input.
+            if not from_serialized:
+                formats.add("lua_tables")
             return table(value)
 
         mapping = market_mapping or {}
@@ -98,7 +112,7 @@ class AuctionatorAdapter:
             realm = decode(data)
             item_shapes = []
             version = realm.get(b"version")
-            if version is not None and (type(version) is not int or version != 2):
+            if b"version" in realm and (type(version) is not int or version != 2):
                 raise FormatError("unsupported realm database version")
             for raw_key, raw_item in realm.items():
                 if raw_key == b"version":
@@ -106,7 +120,7 @@ class AuctionatorAdapter:
                 reserve_structure()
                 original_key = text(raw_key)
                 key, item_id, kind = normalize_item_key(original_key)
-                item = decode(raw_item)
+                item = decode(raw_item, from_serialized=isinstance(data, bytes))
                 if set(item) - {b"m", b"l", b"h", b"a"}:
                     raise FormatError("unsupported item fields or legacy pending conversion")
                 highs, lows = table(item.get(b"h")), table(item.get(b"l"))
@@ -150,11 +164,19 @@ class AuctionatorAdapter:
                 ))
             shapes.append(NativeMarketShape(market_key=market, ruleset=ruleset,
                                             realm_version=version, items=item_shapes))
-        batch = PartialBatch(
+        batch_type = Auctionator341Batch if source_version == "341" else PartialBatch
+        batch = batch_type(
             source_type="simulated" if dataset == "simulated" else "auctionator",
-            source_id=source_id, dataset=dataset, region=region,
+            source_id=source_id, source_version=source_version, dataset=dataset, region=region,
             scan_day_zero=scan_day_zero, observations=observations,
         )
-        native = NativeExportEvidence(markets=shapes, facts=facts,
-                                      input_format=next(iter(formats)) if len(formats) == 1 else "mixed")
-        return PartialAdapterResult(batch, sha256(raw).hexdigest(), raw_reference, native)
+        provenance = CaptureProvenance.model_validate(provenance.model_dump() if isinstance(provenance, CaptureProvenance)
+                                                       else provenance) if provenance is not None else None
+        native = NativeExportEvidence(markets=shapes, facts=facts, provenance=provenance,
+                                      input_format=next(iter(formats)) if len(formats) == 1 else "mixed",
+                                      decoder_version=("auctionator-v8-v2" if serialized_codec or source_version == "341" or provenance
+                                                       else "auctionator340-v1"))
+        source_hash = sha256(raw).hexdigest()
+        if provenance is not None:
+            provenance.validate_context(batch, source_hash, shapes, native.input_format)
+        return PartialAdapterResult(batch, source_hash, raw_reference, native)
