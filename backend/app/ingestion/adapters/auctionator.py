@@ -1,13 +1,19 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from hashlib import sha256
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from app.ingestion.auctionator_keys import normalize_item_key
 from app.ingestion.capture_provenance import CaptureProvenance
 from app.ingestion.partial_contracts import Auctionator341Batch, PartialBatch, PartialObservation, Ruleset, MAX_OBSERVATIONS
 from app.ingestion.native_exports import NativeExportEvidence, NativeFact, NativeItemShape, NativeMarketShape
 from app.ingestion.saved_variables import CBORReader, FormatError, LuaReader, MAX_BYTES, ParseBudget, strip_lua_prefix
+
+if TYPE_CHECKING:
+    from app.ingestion.local_lineage import LocalCaptureBinding
 
 
 @dataclass(frozen=True)
@@ -16,6 +22,7 @@ class PartialAdapterResult:
     source_hash: str
     raw_reference: str | None = None
     native: NativeExportEvidence | None = None
+    local_capture: LocalCaptureBinding | None = None
 
     @property
     def evidence_hash(self):

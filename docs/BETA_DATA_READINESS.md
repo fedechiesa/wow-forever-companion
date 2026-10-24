@@ -406,6 +406,12 @@ El control de todas las filas por tabla y de `last_value/is_called` de las 11 se
 
 ## 14. Persistencia 341 con procedencia verificada y destino trial
 
+**Actualización 5B.1.1 (24/10/2026):** el procedimiento de importación de esta
+sección es histórico. Las escrituras 341 ahora requieren identidad económica y
+linaje local completos, además de TrialDatabase y 006. La CLI anterior se niega
+a importar 341; no ejecutar los comandos históricos para sortear esa restricción.
+Ver sección 16 y el informe de 5B.1. `--check-target` continúa siendo sólo lectura.
+
 Actualización del **21/10/2026**, sin commit ni push. El SavedVariables auténtico fue validado offline; **no se importó**, ni siquiera al laboratorio. La preparación técnica está **READY FOR TRIAL REVIEW**, con NO GO para ejecutar la captura mientras falten región/contexto y revisión humana.
 
 ### Cambio de alcance respecto de la etapa offline
@@ -501,3 +507,52 @@ Los archivos del commit se limitan a código/tests de integración y documentaci
 Una segunda captura posterior fue informada por el operador y queda fuera de este cierre, sin incorporarla a Git ni anticipar resultados. El roadmap de Fase 5A está en el [README](../README.md): programa Windows para detectar guardados tras `/reload`/salida, esperar escritura completa, validar/archivar una copia independiente, distinguir cambios de precios/configuración, deduplicar por hash y conservar trazabilidad. Primera entrega sin PostgreSQL ni envío automático. Fases posteriores: sincronización autenticada, dos a cuatro escaneos diarios manuales, histórico/análisis reales y estudio de estacionalidad/modelos. Sólo se documentó; no se implementó.
 
 **READY FOR TRIAL REVIEW** sigue siendo el límite de autorización para datos auténticos. El cierre habilita el commit/push autorizado de la integración revisada; no habilita ejecutar el primer trial sin completar las condiciones de la sección 14 y recibir revisión específica.
+
+## 16. Requisitos de identidad y linaje de 5B.1.1
+
+Actualización del **24/10/2026**. Prevalece sobre los comandos históricos 341
+anteriores. La auditoría de cierre y publicación se registra en la sección 10
+del informe. Ver [modelo, ejemplos, migración y resultados](PHASE_5B1_INGESTION_READINESS.md#9-actualización-5b11-identidad-y-linaje-persistente).
+
+La persistencia 341 exige ahora un binding de captura local completo, además de
+la procedencia y TrialDatabase. Quitar el binding o seleccionar el importador
+antiguo no permite escribir: **la CLI 341 se niega a importar** hasta que una
+fase posterior integre el contrato de archivo completo. `--check-target` sigue
+verificando sólo identidad de destino, sin validar una captura ni escribir.
+La ruta 340 sigue disponible para su contrato anterior; no se puede etiquetar
+un archivo 341 como 340, omitir evidencia ni convertirlo a HTTP para sortearlo.
+
+Antes de una futura ejecución auténtica:
+
+1. Revisar 5B.1.1 y la migración 006. Validar privadamente el ámbito económico
+   técnico estable, región, reino cuando conocido y si el AH comparte facciones
+   o está separado. La clave PvP y la facción del jugador no prueban ese alcance.
+   Conservar unknown como desconocido y detener el caso si falta evidencia.
+2. Preparar VerifiedLocalContext (`verified-local-capture-v1`) con CaptureProvenance
+   341 y el dataset explícito simulated, stress_test o launch. Launch es un dataset
+   nuevo; no renombrar los registros real antiguos. El source_id sigue siendo
+   estable por origen/historia y no forma parte de la identidad económica.
+3. Conservar el original 5A y CaptureMetadata íntegros. El helper de biblioteca
+   prepare_local_capture recibe sus bytes/metadatos y contexto verificado, coteja
+   hashes completos y rechaza toda la captura si cualquier precio supera 32 bits.
+   No reemplazar adquisición UTC por hora de scan; native_scan_timestamp es null.
+4. Obtener autorización específica para datos auténticos y provisionar un destino
+   vacío aislado de aceptación, separado de desarrollo y de los laboratorios de
+   fixtures. Verificar ambas identidades con TrialDatabase; preparar 001–006 sólo
+   en ese destino verificado. No usar el default de migrate.py ni editar .env.
+5. La futura escritura de biblioteca deberá usar PartialIngestionService con
+   trial_target exclusivamente. Toda escritura 341 exige binding verificado y
+   preflight de 005/006 antes de INSERT; retries/failed conservan el mismo guard.
+   Este procedimiento describe requisitos: **no se ejecutó con datos auténticos**.
+
+Un mercado verificado puede ser observado por dos fuentes sin duplicarlo.
+Export v2 comparte hechos nativos equivalentes; partial_capture_receipts conserva
+cada adquisición/procedencia y los hashes originales, con sus propios runs y
+vínculos append-only. Dos estados distintos del bucket 2485 siguen siendo dos
+estados de un índice, sin fabricar dos días. El camino local no puebla el acumulado
+003 ni habilita los lectores/dashboard 3A/3B actuales.
+
+La primera prueba con `/reload` real y la primera importación auténtica siguen
+pendientes. Región, ámbito/facción, build de sesión y productor efectivo del codec
+de las capturas privadas no se dan por confirmados. Los laboratorios de esta fase
+contienen sólo fixtures sintéticos y no son capturas de aceptación.

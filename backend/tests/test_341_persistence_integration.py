@@ -15,12 +15,16 @@ import pytest
 from app.core.config import settings
 from app.db.trial import TrialDatabase
 from app.ingestion.partial_service import PartialIngestionService
-from tests.test_341_persistence import synthetic_source
+from tests.test_341_persistence import synthetic_source as legacy_synthetic_source
 from tests.test_native_exports import native_source
 from tests.test_trial_database_integration import counts_and_sequences
 import scripts.migrate as migrations
 from scripts import import_auctionator as cli
 from tests.test_auctionator_cbor import envelope, encode, realm
+from app.ingestion.local_lineage import VerifiedLocalContext, local_export_identity, prepare_local_capture
+from app.local_capture.decoder import CaptureAdapter
+from app.local_capture.contracts import Origin, describe
+from datetime import datetime, timezone
 
 
 @pytest.fixture
@@ -31,6 +35,26 @@ def lab():
         pytest.fail("Explicit trial laboratory required; no fallback")
     with TrialDatabase(dsn, settings.database_url, name) as target:
         yield dsn, name, target
+
+
+def synthetic_source(high=100, *, key=b"123", phase="stress_test", source_id="stress-synthetic", prefix=b"", **updates):
+    # Historical parser/provenance vectors remain unchanged; new 341 writes
+    # additionally require an archived acquisition and verified economic scope.
+    source = legacy_synthetic_source(high, key=key, phase=phase, source_id=source_id, prefix=prefix, **updates)
+    from tests.test_auctionator_cbor import item
+    raw = prefix + envelope(encode({b"version": 2, key: item(h={b"2485": high}, m=high)}))
+    metadata = describe(CaptureAdapter().decode_bytes(raw, serialized_codec="cbor-definite"),
+                        source_bytes=len(raw), captured_at=datetime(2026,10,24,tzinfo=timezone.utc),
+                        origin=Origin(), source_version="341", serialized_codec="cbor-definite")
+    p = source.native.provenance.model_dump()
+    if phase == "launch":
+        p["dataset"] = "launch"
+    context = VerifiedLocalContext(contract="verified-local-capture-v1", provenance=p,
+        serialized_codec="cbor-definite", market_identities={"PvP": {
+            "economy": {"value": "fixture-"+source_id, "evidence_ref": "fixture#economy"},
+            "realm": None, "faction": None, "auction_house_scope": "shared",
+            "scope_evidence_ref": "fixture#scope"}})
+    return prepare_local_capture(raw, metadata, context)
 
 
 def unique_source(**kwargs):
@@ -52,7 +76,7 @@ def test_341_roundtrip_and_equivalent_receptions_are_idempotent(lab):
         connection.read_only = True
         header = connection.execute("SELECT * FROM partial_exports WHERE id=%s", (a.export_id,)).fetchone()
         assert header["sealed"] and header["source_version"] == "341" and header["dataset"] == "stress_test"
-        assert header["structure_manifest"] == source.native.manifest()
+        assert header["structure_manifest"] == local_export_identity(source)[1]
         p = header["structure_manifest"]["provenance"]
         assert p["capture_phase"] == "stress_test" and p["codec_producer"] == "unverified"
         assert "source_sha256" not in p
@@ -62,7 +86,7 @@ def test_341_roundtrip_and_equivalent_receptions_are_idempotent(lab):
         assert {f["native_field"] for f in facts} == {"h", "a", "m"}
         links = connection.execute("SELECT input_format,decoder_version FROM partial_export_imports WHERE export_id=%s", (a.export_id,)).fetchall()
         assert len(links) == 3 and all(x == {"input_format": "cbor_definite", "decoder_version": "auctionator-v8-v2"} for x in links)
-        assert connection.execute("SELECT count(*) AS n FROM partial_observations WHERE source_id=%s", (source.batch.source_id,)).fetchone()["n"] == 4
+        assert connection.execute("SELECT count(*) AS n FROM partial_observations WHERE source_id=%s", (source.batch.source_id,)).fetchone()["n"] == 0
 
 
 def test_exports_preserve_each_state_without_fabricating_new_buckets(lab):
@@ -74,9 +98,9 @@ def test_exports_preserve_each_state_without_fabricating_new_buckets(lab):
     assert a.export_id != b.export_id
     with psycopg.connect(dsn) as c:
         c.read_only = True
-        assert c.execute("SELECT DISTINCT scan_day FROM partial_observations WHERE source_id=%s AND scan_day IS NOT NULL", (first.batch.source_id,)).fetchall() == [(2485,)]
-        values = dict(c.execute("SELECT statistic,value FROM partial_observations WHERE source_id=%s AND scan_day=2485", (first.batch.source_id,)).fetchall())
-        assert values["daily_minimum"] == 100 and values["daily_highest_minimum"] == 200
+        assert c.execute("SELECT DISTINCT scan_day FROM partial_export_facts WHERE export_id=ANY(%s) AND scan_day IS NOT NULL", ([a.export_id,b.export_id],)).fetchall() == [(2485,)]
+        assert c.execute("SELECT value FROM partial_export_facts WHERE export_id=ANY(%s) AND native_field='h' ORDER BY value", ([a.export_id,b.export_id],)).fetchall() == [(100,), (200,)]
+        assert c.execute("SELECT count(*) FROM partial_observations WHERE source_id=%s", (first.batch.source_id,)).fetchone() == (0,)
 
 
 def test_stress_launch_and_simulated_datasets_have_distinct_markets(lab):
@@ -87,7 +111,7 @@ def test_stress_launch_and_simulated_datasets_have_distinct_markets(lab):
     with psycopg.connect(dsn) as c:
         c.read_only = True
         rows = c.execute("SELECT e.dataset,f.market_id FROM partial_exports e JOIN partial_export_facts f ON e.id=f.export_id WHERE e.id=ANY(%s) GROUP BY e.dataset,f.market_id", ([r.export_id for r in results],)).fetchall()
-        assert {r[0] for r in rows} == {"stress_test", "real", "simulated"}
+        assert {r[0] for r in rows} == {"stress_test", "launch", "simulated"}
         assert len({r[1] for r in rows}) == 3
 
 
@@ -106,14 +130,14 @@ def test_invalid_metadata_or_factory_changes_no_rows_or_sequences(lab):
 def test_failed_run_and_retry_use_only_the_revalidated_trial_factory(lab, monkeypatch):
     dsn, _, target = lab
     source = unique_source()
-    real = PartialIngestionService._persist_observation
+    real = PartialIngestionService._persist_export
     calls = []
 
     def fail(self, *args):
         calls.append(True)
         raise psycopg.errors.CheckViolation("private-test-secret")
 
-    monkeypatch.setattr(PartialIngestionService, "_persist_observation", fail)
+    monkeypatch.setattr(PartialIngestionService, "_persist_export", fail)
     service = PartialIngestionService(trial_target=target)
     with pytest.raises(psycopg.errors.CheckViolation):
         service.import_batch(source)
@@ -128,7 +152,7 @@ def test_failed_run_and_retry_use_only_the_revalidated_trial_factory(lab, monkey
             calls.append(True)
             raise psycopg.errors.DeadlockDetected("retry")
         return real(self, *args)
-    monkeypatch.setattr(PartialIngestionService, "_persist_observation", retry)
+    monkeypatch.setattr(PartialIngestionService, "_persist_export", retry)
     result = service.import_batch(source)
     assert result.status == "completed" and result.native_facts_seen == 3
 
@@ -166,7 +190,7 @@ def test_new_native_evidence_remains_immutable(lab):
                     c.execute(statement, (result.export_id,))
 
 
-def test_341_cli_roundtrip_with_explicit_verified_context(lab, tmp_path, monkeypatch, capsys):
+def test_341_cli_cannot_import_without_verified_local_lineage(lab, tmp_path, monkeypatch, capsys):
     dsn, name, _ = lab
     source = unique_source()
     capture = tmp_path / "synthetic.lua"
@@ -178,12 +202,10 @@ def test_341_cli_roundtrip_with_explicit_verified_context(lab, tmp_path, monkeyp
             "--dataset", "stress_test", "--source-version", "341", "--serialized-codec", "cbor-definite",
             "--provenance-file", str(metadata), "--trial", "--database-url-env", "SYNTHETIC_TRIAL_DSN",
             "--expected-database", name]
-    assert cli.main(args) == 0
-    first = json.loads(capsys.readouterr().out.splitlines()[-1])
-    assert cli.main(args) == 0
-    second = json.loads(capsys.readouterr().out.splitlines()[-1])
-    assert first["status"] == "completed" and second["status"] == "duplicate"
-    assert first["export_id"] == second["export_id"]
+    before = counts_and_sequences(dsn)
+    assert cli.main(args) == 1
+    assert "verified local capture lineage" in capsys.readouterr().err
+    assert counts_and_sequences(dsn) == before
 
 
 def test_cli_wrong_input_hash_stops_before_rows_or_sequences(lab, tmp_path, monkeypatch, capsys):
@@ -222,7 +244,8 @@ def test_005_preserves_existing_340_exports_and_sequences(lab, monkeypatch):
     with psycopg.connect(dsn) as c:
         c.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
     isolated = make_conninfo(dsn, options="-c search_path=" + schema)
-    files = migrations.migration_files()
+    files = migrations.migration_files()[:5]
+    monkeypatch.setattr(migrations, "migration_files", lambda: files)
     try:
         with monkeypatch.context() as old:
             old.setattr(migrations, "migration_files", lambda: files[:4])

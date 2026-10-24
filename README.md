@@ -39,6 +39,11 @@ La prioridad es mantener el sistema simple, explicable y facil de defender tecni
 
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Preparación segura de ingestión local 5B.1](docs/PHASE_5B1_INGESTION_READINESS.md):
+  precios extremos sólo como evidencia local. La actualización 5B.1.1 prepara
+  identidad económica y linaje persistente con migración 006, validados con
+  fixtures en laboratorio. Sin sincronización ni importación auténtica;
+  CLI 341 bloqueada hasta integrar el contrato completo de captura.
 
 La estructura propuesta del repositorio esta documentada en [Arquitectura](docs/ARCHITECTURE.md#estructura-propuesta-del-repositorio).
 

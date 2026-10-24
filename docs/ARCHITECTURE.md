@@ -504,6 +504,36 @@ WoW Forever sigue pendiente; la validación realizada usó simulaciones externas
 Contrato y archivado: [PHASE_5A1_LOCAL_CAPTURE.md](PHASE_5A1_LOCAL_CAPTURE.md).
 Observación, configuración y límites: [PHASE_5A2_LOCAL_WATCHER.md](PHASE_5A2_LOCAL_WATCHER.md).
 
+5B.1 agrega `local_capture/readiness.py`, un contrato de contexto y evaluación
+offline que recalcula hashes y exige procedencia e identidad de mercado explícitas.
+Su resultado siempre es evidencia local, sin habilitar un escritor. Precios por
+encima de `2**31-1` bloquean la captura completa para ingestión; se mantienen exactos
+en el archivo de 64 bits. El servicio revalida todos los batches desde diccionarios
+antes de conectar, incluyendo 340 y subclases locales. No se amplían SQL ni 3A/3B.
+La auditoría identificó que faltaban adquisición/hashes locales y una identidad
+completa para claves genéricas; 5B.1.1 resuelve ambos puntos como se explica abajo.
+No se introduce otra tabla de hechos.
+Auditoría, alternativas y pruebas: [PHASE_5B1_INGESTION_READINESS.md](PHASE_5B1_INGESTION_READINESS.md).
+
+5B.1.1 implementa las decisiones aprobadas mediante `ingestion/local_lineage.py`
+y la migración **006**. `partial_markets.economic_identity` identifica dataset,
+región técnica, ámbito económico estable y alcance compartido/facción, separando
+observador y clave nativa. La unicidad JSONB compara la identidad completa;
+las filas legacy conservan NULL y su unicidad previa, sin backfill de procedencia.
+`partial_exports` v2 comparte estados/hechos entre observadores; las attestaciones
+de cada uno, adquisición y hashes completos quedan en `partial_capture_receipts`,
+append-only y enlazada a run/export. La cabecera mantiene su primer observador.
+006 también congela la procedencia del run que ya tiene una recepción local,
+permitiendo sólo su finalización completed/duplicate con cero cambios en 003.
+El nuevo flujo conserva hechos nativos, sin poblar el acumulado 003 ni alimentar
+3A/3B. Datasets nuevos simulated/stress_test/launch no reinterpretan real legacy.
+Toda escritura 341 exige binding local verificado, 005/006 y TrialDatabase;
+quitar el binding no permite volver al importador anterior. La CLI 341 queda
+bloqueada para importación hasta integrar el contrato completo; check-target
+mantiene su comprobación de identidad sin escritura. 340 permanece compatible.
+No hay sincronización, cambios del watcher ni importaciones auténticas. Detalles,
+ejemplos y límites en la sección 9 del informe 5B.1.
+
 ## Contrato de snapshot completo de Fase 2
 
 El adaptador de snapshots completos produce una estructura equivalente a:

@@ -42,7 +42,7 @@ class CaptureProvenance(BaseModel):
     format_version: Literal["340", "341"]
     source_id: str = Field(min_length=1, max_length=200)
     region: str = Field(min_length=1, max_length=100)
-    dataset: Literal["real", "simulated", "stress_test"]
+    dataset: Literal["real", "simulated", "stress_test", "launch"]
     capture_phase: Literal["stress_test", "launch", "other", "simulated"]
     market_rulesets: dict[str, Ruleset] = Field(min_length=1, max_length=100)
     region_evidence_ref: str = Field(min_length=1, max_length=500)
@@ -68,6 +68,11 @@ class CaptureProvenance(BaseModel):
     @classmethod
     def clean(cls, value):
         return clean_text(value) if value is not None else None
+
+    @field_validator("source_id")
+    @classmethod
+    def explicit_source(cls, value):
+        return evidence_reference(value)
 
     @field_validator("region_evidence_ref", "market_evidence_ref", "origin_evidence_ref", "codec_producer_evidence_ref")
     @classmethod
@@ -99,6 +104,8 @@ class CaptureProvenance(BaseModel):
             raise ValueError("capture phase and dataset disagree")
         if self.dataset == "stress_test" and self.format_version != "341":
             raise ValueError("stress_test persistence requires format 341")
+        if self.dataset == "launch" and (self.capture_phase != "launch" or self.format_version != "341"):
+            raise ValueError("launch dataset requires launch phase and format 341")
         if (self.codec_producer != "unverified") != (self.codec_producer_evidence_ref is not None):
             raise ValueError("a known codec producer requires separate evidence; unknown has none")
         if self.capture_addon_version and self.capture_addon_version.value != self.format_version:

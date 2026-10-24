@@ -89,7 +89,7 @@ class Auctionator341Batch(PartialBatch):
     The caller selects the format version; SavedVariables does not declare it.
     """
     source_version: Literal["341"] = "341"
-    dataset: Literal["real", "simulated", "stress_test"]
+    dataset: Literal["real", "simulated", "stress_test", "launch"]
 
 
 class PartialImportResult(BaseModel):

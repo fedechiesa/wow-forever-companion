@@ -1,3 +1,4 @@
+from dataclasses import replace
 import re
 import time
 
@@ -10,6 +11,7 @@ from app.ingestion.partial_contracts import Auctionator341Batch, PartialBatch
 from app.ingestion.adapters.auctionator import PartialAdapterResult
 from app.ingestion.partial_contracts import PartialImportResult
 from app.ingestion.native_exports import NativeExportEvidence
+from app.ingestion.local_lineage import local_export_identity, validate_local_binding
 
 
 class PartialIngestionService:
@@ -28,7 +30,7 @@ class PartialIngestionService:
         return (self._connection_factory or connect)()
 
     def import_batch(self, result: PartialAdapterResult) -> PartialImportResult:
-        extended = result.batch.source_version != "340" or result.batch.dataset == "stress_test" or (
+        extended = result.local_capture is not None or result.batch.source_version != "340" or result.batch.dataset in ("stress_test", "launch") or (
             result.native is not None and (
                 result.native.decoder_version != "auctionator340-v1"
                 or result.native.input_format not in ("lua_tables", "libcbor", "mixed")
@@ -38,16 +40,21 @@ class PartialIngestionService:
         if extended:
             if self._trial_target is None:
                 raise ValueError("offline-only without verified metadata and a TrialDatabase target")
-            batch_type = Auctionator341Batch if result.batch.source_version == "341" else PartialBatch
-            batch_type.model_validate(result.batch.model_dump())
             if result.native is None or result.native.provenance is None:
                 raise ValueError("verified capture provenance and native evidence are required")
             if result.native.decoder_version != "auctionator-v8-v2":
                 raise ValueError("extended profiles require the versioned v8 decoder")
+        # Pydantic trusts existing model instances, including the wider local
+        # CaptureObservation subclass. Rebuild *every* batch from dictionaries
+        # before a connection, retry or failed-run writer can be reached.
+        batch_type = Auctionator341Batch if result.batch.source_version == "341" else PartialBatch
+        batch = batch_type.model_validate(result.batch.model_dump())
+        result = replace(result, batch=batch)
         if not re.fullmatch(r"[0-9a-f]{64}", result.source_hash):
             raise ValueError("source_hash must be SHA-256")
         if result.native is not None:
             native = NativeExportEvidence.model_validate(result.native.model_dump())
+            result = replace(result, native=native)
             if native.provenance is not None:
                 native.provenance.validate_context(result.batch, result.source_hash, native.markets, native.input_format)
             def identities(observations):
@@ -56,6 +63,10 @@ class PartialIngestionService:
                               for o in observations)
             if identities(native.projected_observations()) != identities(result.batch.observations):
                 raise ValueError("native evidence and normalized batch disagree")
+        if result.local_capture is not None:
+            result = replace(result, local_capture=validate_local_binding(result))
+        elif result.batch.source_version == "341":
+            raise ValueError("format 341 requires verified local market identity and capture lineage")
         for attempt in range(self.deadlock_attempts):
             try:
                 return self._import_batch(result)
@@ -82,6 +93,15 @@ class PartialIngestionService:
 
     def _create_run(self, connection, result, status, error=None):
         b = result.batch
+        if result.local_capture is not None:
+            try:
+                ready = connection.execute(
+                    "SELECT 1 FROM public.schema_migrations WHERE id='006_verified_local_lineage.sql'"
+                ).fetchone()
+            except psycopg.Error:
+                raise ValueError("trial destination is not prepared for verified local lineage") from None
+            if not ready:
+                raise ValueError("trial destination is not prepared for verified local lineage")
         if b.source_version == "341" or (result.native and result.native.decoder_version == "auctionator-v8-v2"):
             try:
                 ready = connection.execute(
@@ -121,8 +141,10 @@ class PartialIngestionService:
                 for key, o in sorted(item_entries.items()):
                     items[key] = self._lock_item(connection, o)
                 markets = {}
+                local_identities = result.local_capture.context.identities() if result.local_capture else {}
                 for key, o in sorted(market_entries.items()):
-                    markets[key] = self._lock_market(connection, b, o)
+                    markets[key] = (self._lock_market(connection, b, o, local_identities[key]) if local_identities
+                                    else self._lock_market(connection, b, o))
                 export_id, export_created = self._persist_export(connection, result, markets, items, run_id)
                 changed = 0
                 evidence_hash = result.evidence_hash
@@ -130,11 +152,25 @@ class PartialIngestionService:
                 observations = sorted(b.observations, key=lambda o: (
                     o.market_key, o.item_key, -1 if o.scan_day is None else o.scan_day, o.statistic,
                 ))
-                for o in observations:
-                    changed += self._persist_observation(
-                        connection, result, o, markets[o.market_key], items[o.item_key], run_id, evidence_hash,
+                if result.local_capture is not None:
+                    # Local v2 persists immutable native facts once per economic
+                    # state. Do not multiply accumulated 003 rows per observer or
+                    # feed an unsupported 341 series into analytics.
+                    binding = result.local_capture
+                    connection.execute(
+                        """INSERT INTO partial_capture_receipts
+                           (import_id,export_id,source_sha256,market_sha256,acquired_at,archive_metadata,capture_context)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                        (run_id,export_id,result.source_hash,binding.metadata.market_sha256,
+                         binding.metadata.captured_at,Jsonb(binding.metadata.model_dump(mode="json")),
+                         Jsonb(binding.context.model_dump(mode="json"))),
                     )
-                self._validate_daily_coherence(connection, b, markets, items)
+                else:
+                    for o in observations:
+                        changed += self._persist_observation(
+                            connection, result, o, markets[o.market_key], items[o.item_key], run_id, evidence_hash,
+                        )
+                    self._validate_daily_coherence(connection, b, markets, items)
                 status = "completed" if changed or export_created else "duplicate"
                 connection.execute(
                     "UPDATE partial_import_runs SET status=%s, observations_changed=%s WHERE id=%s",
@@ -156,8 +192,9 @@ class PartialIngestionService:
         native, b = result.native, result.batch
         if native is None:
             return None, False
-        state_hash = native.state_hash(b)
-        manifest = native.manifest()
+        local = result.local_capture is not None
+        state_hash, manifest = local_export_identity(result) if local else (native.state_hash(b), native.manifest())
+        canonical_version = 2 if local else native.canonical_version
         inserted = connection.execute(
             """INSERT INTO partial_exports
                (source_type,source_id,source_version,database_version,dataset,region,temporal_basis,
@@ -165,7 +202,7 @@ class PartialIngestionService:
                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (canonical_version,state_hash) DO NOTHING RETURNING id""",
             (b.source_type,b.source_id,b.source_version,b.database_version,b.dataset,b.region,self._basis(b),
-             native.canonical_version,state_hash,Jsonb(manifest),len(native.facts),run_id),
+             canonical_version,state_hash,Jsonb(manifest),len(native.facts),run_id),
         ).fetchone()
         columns = ("market_key", "ruleset", "item_key", "external_item_id", "key_kind",
                    "original_item_key", "native_field", "scan_day", "original_day_key", "value")
@@ -174,7 +211,7 @@ class PartialIngestionService:
         if inserted is None:
             header = connection.execute(
                 "SELECT * FROM partial_exports WHERE canonical_version=%s AND state_hash=%s FOR UPDATE",
-                (native.canonical_version,state_hash),
+                (canonical_version,state_hash),
             ).fetchone()
             stored = connection.execute(
                 """SELECT market_key,ruleset,item_key,external_item_id,key_kind,original_item_key,
@@ -187,7 +224,15 @@ class PartialIngestionService:
             context = (b.source_type,b.source_id,b.source_version,b.database_version,b.dataset,b.region,self._basis(b))
             stored_context = tuple(header[key] for key in ("source_type","source_id","source_version",
                                    "database_version","dataset","region","temporal_basis"))
-            if (not header["sealed"] or header["structure_manifest"] != manifest or stored != expected
+            stored_manifest = header["structure_manifest"]
+            if local:
+                # v2 is shared by observers; keep the first header intact and
+                # preserve every observer's full provenance on its receipt.
+                context = context[:1] + context[2:]
+                stored_context = stored_context[:1] + stored_context[2:]
+                stored_manifest = {k: v for k, v in stored_manifest.items() if k != "provenance"}
+                manifest = {k: v for k, v in manifest.items() if k != "provenance"}
+            if (not header["sealed"] or stored_manifest != manifest or stored != expected
                     or header["native_fact_count"] != len(facts) or stored_context != context):
                 raise psycopg.errors.CheckViolation("canonical export identity collision or corrupt evidence")
             return header["id"], False
@@ -213,7 +258,20 @@ class PartialIngestionService:
             "SELECT id FROM partial_items WHERE item_key=%s FOR UPDATE", (o.item_key,),
         ).fetchone()["id"]
 
-    def _lock_market(self, connection, batch, o):
+    def _lock_market(self, connection, batch, o, economic_identity=None):
+        if economic_identity is not None:
+            connection.execute(
+                """INSERT INTO partial_markets(market_key,ruleset,region,dataset,economic_identity)
+                   VALUES (%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING""",
+                (o.market_key,o.ruleset,batch.region,batch.dataset,Jsonb(economic_identity)),
+            )
+            row = connection.execute(
+                "SELECT id,ruleset FROM partial_markets WHERE economic_identity=%s FOR UPDATE",
+                (Jsonb(economic_identity),),
+            ).fetchone()
+            if row["ruleset"] != o.ruleset:
+                raise psycopg.IntegrityError("Verified economy conflicts with its existing ruleset")
+            return row["id"]
         connection.execute(
             """INSERT INTO partial_markets(market_key,ruleset,region,dataset)
                VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING""",
@@ -221,7 +279,8 @@ class PartialIngestionService:
         )
         row = connection.execute(
             """SELECT id,ruleset FROM partial_markets
-               WHERE market_key=%s AND region=%s AND dataset=%s FOR UPDATE""",
+               WHERE market_key=%s AND region=%s AND dataset=%s
+                 AND to_jsonb(partial_markets)->>'economic_identity' IS NULL FOR UPDATE""",
             (o.market_key, batch.region, batch.dataset),
         ).fetchone()
         if row["ruleset"] != o.ruleset:

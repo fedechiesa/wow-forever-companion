@@ -42,7 +42,10 @@ def test_004_preserves_16628_legacy_rows_phase2_and_no_fictitious_backfill(test_
         c.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
     isolated_url = make_conninfo(test_database_url,options=f"-c search_path={schema} -c statement_timeout=15000")
     monkeypatch.setattr(settings,"database_url",isolated_url)
-    all_files = migrations.migration_files()
+    # This regression owns the historical 003 -> 005 upgrade. Later migrations
+    # have their own populated-schema preservation coverage.
+    all_files = migrations.migration_files()[:5]
+    monkeypatch.setattr(migrations, "migration_files", lambda: all_files)
     try:
         with monkeypatch.context() as old:
             old.setattr(migrations,"migration_files",lambda: all_files[:3])

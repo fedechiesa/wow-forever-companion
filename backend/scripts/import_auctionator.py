@@ -64,6 +64,9 @@ def main(argv=None):
                 args.source_version, args.source_id, args.region, args.dataset
             ):
                 raise ValueError("capture metadata and CLI context disagree")
+        if args.source_version == "341" and not args.check_target:
+            print("Format 341 persistence requires verified local capture lineage; CLI import is disabled pending archive integration.", file=sys.stderr)
+            return 1
         if not args.trial:
             print(PartialIngestionService().import_batch(load(args)).model_dump_json())
             return 0
