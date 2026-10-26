@@ -560,6 +560,45 @@ No hay endpoints nuevos, cambios de frontend ni integración con 3A/3B.
 
 Uso, pruebas y bloqueos auténticos: [PHASE_5B2_MANUAL_INGESTION.md](PHASE_5B2_MANUAL_INGESTION.md).
 
+### Dashboard de evidencia v2 — Fase 5C.1
+
+`api/evidence.py` publica cuatro GET bajo `/evidence/v2`: mercados por dataset,
+estados por economía, hechos y recepciones de una economía/estado explícitos.
+Reutiliza `LocalEvidenceReader` mediante proyecciones web acotadas en snapshots
+READ ONLY / REPEATABLE READ. Las proyecciones seleccionan una lista pública de
+columnas; el manifest, referencias privadas, source_id/origin_id y metadatos
+libres de las recepciones no se serializan. Los contratos Pydantic cerrados se
+exportan por OpenAPI a TypeScript y validación runtime, como los de 3A/3B.
+IDs BIGINT viajan como strings; precios/cantidades siguen en INTEGER.
+
+Cada fila de hechos agrupa todos los campos nativos de un item/bucket antes de
+paginar. l prevalece sobre h; sólo sin l se etiqueta h_fallback. m conserva una
+fila sin fecha, sin asignación al bucket más alto. Recepciones nunca se unen a
+esas filas para multiplicarlas. Estados se descubren por identidad en el manifest,
+incluidos mercados vacíos de una captura con evidencia en otro mercado.
+
+`features/evidence/EvidenceDashboard.tsx` implementa selección explícita
+dataset → economía → estado, tabla de items y un desplegable de procedencia.
+Reutiliza MoneyValue, StatusPanel y useResource con cancelación y descarte por
+clave. La navegación cambia entre evidencia y el dashboard histórico existente;
+la selección v2 no solicita métricas ni señales. `/partial/markets` excluye
+identidades económicas verificadas para mantener el catálogo legado separado.
+No cambia fórmulas, contratos analíticos ni SQL de app/market. La CLI privada
+conserva sus lectores y contexto completo, separados de la proyección web pública.
+
+El ajuste UX reúne todas las páginas de hechos del estado sellado mediante los
+GET existentes, con cancelación, validación de continuidad/conteos y el presupuesto
+existente de 200.000 hechos nativos. `items.ts` agrupa sólo por item_key completa;
+`EvidenceItemsTable.tsx` pagina 25 items y filtra por ID/variante localmente. m se
+presenta por item sin asignarlo a un bucket. Con un único bucket se muestra su
+mínimo/disponibilidad; con varios, se ofrece consultar registros separados, sin
+elegir el índice mayor como último dato. Los detalles nativos y copper se montan
+al desplegar cada item. MoneyValue conserva cálculos/precisión y agrega un modo
+de presentación compacto, manteniendo su presentación anterior como default.
+No se reutilizan nombres de samples ni el catálogo fresh marcado FICTIONAL.
+
+Semántica, límites, permisos y validación: [PHASE_5C1_EVIDENCE_DASHBOARD.md](PHASE_5C1_EVIDENCE_DASHBOARD.md).
+
 ## Contrato de snapshot completo de Fase 2
 
 El adaptador de snapshots completos produce una estructura equivalente a:

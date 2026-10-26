@@ -1423,5 +1423,599 @@
       "availability_field_presence"
     ],
     "title": "SeriesDescriptor"
+  },
+  "EvidenceMarketsPage": {
+    "properties": {
+      "contract": {
+        "type": "string",
+        "const": "5c1-v1",
+        "title": "Contract",
+        "default": "5c1-v1"
+      },
+      "dataset": {
+        "type": "string",
+        "enum": [
+          "simulated",
+          "stress_test",
+          "launch"
+        ],
+        "title": "Dataset"
+      },
+      "limit": {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "title": "Limit"
+      },
+      "offset": {
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 0.0,
+        "title": "Offset"
+      },
+      "has_more": {
+        "type": "boolean",
+        "title": "Has More"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceMarket"
+        },
+        "type": "array",
+        "maxItems": 100,
+        "title": "Items"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "dataset",
+      "limit",
+      "offset",
+      "has_more",
+      "items"
+    ],
+    "title": "EvidenceMarketsPage"
+  },
+  "EvidenceMarket": {
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Id"
+      },
+      "dataset": {
+        "type": "string",
+        "enum": [
+          "simulated",
+          "stress_test",
+          "launch"
+        ],
+        "title": "Dataset"
+      },
+      "economy": {
+        "type": "string",
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Economy"
+      },
+      "region": {
+        "type": "string",
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Region"
+      },
+      "native_label": {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Native Label"
+      },
+      "ruleset": {
+        "type": "string",
+        "enum": [
+          "PvE",
+          "PvP",
+          "HC",
+          "RP"
+        ],
+        "title": "Ruleset"
+      },
+      "auction_house_scope": {
+        "type": "string",
+        "enum": [
+          "shared",
+          "faction"
+        ],
+        "title": "Auction House Scope"
+      },
+      "faction": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Faction"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "id",
+      "dataset",
+      "economy",
+      "region",
+      "native_label",
+      "ruleset",
+      "auction_house_scope",
+      "faction"
+    ],
+    "title": "EvidenceMarket"
+  },
+  "EvidenceStatesPage": {
+    "properties": {
+      "contract": {
+        "type": "string",
+        "const": "5c1-v1",
+        "title": "Contract",
+        "default": "5c1-v1"
+      },
+      "dataset": {
+        "type": "string",
+        "enum": [
+          "simulated",
+          "stress_test",
+          "launch"
+        ],
+        "title": "Dataset"
+      },
+      "limit": {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "title": "Limit"
+      },
+      "offset": {
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 0.0,
+        "title": "Offset"
+      },
+      "has_more": {
+        "type": "boolean",
+        "title": "Has More"
+      },
+      "market_id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Market Id"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceState"
+        },
+        "type": "array",
+        "maxItems": 100,
+        "title": "Items"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "dataset",
+      "limit",
+      "offset",
+      "has_more",
+      "market_id",
+      "items"
+    ],
+    "title": "EvidenceStatesPage"
+  },
+  "EvidenceState": {
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Id"
+      },
+      "state_hash": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "State Hash"
+      },
+      "native_label": {
+        "type": "string",
+        "title": "Native Label"
+      },
+      "item_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Item Count"
+      },
+      "native_fact_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Native Fact Count"
+      },
+      "receipt_count": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Receipt Count"
+      },
+      "first_acquired_at": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "First Acquired At"
+      },
+      "last_acquired_at": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Last Acquired At"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "id",
+      "state_hash",
+      "native_label",
+      "item_count",
+      "native_fact_count",
+      "receipt_count",
+      "first_acquired_at",
+      "last_acquired_at"
+    ],
+    "title": "EvidenceState"
+  },
+  "EvidenceFactsPage": {
+    "properties": {
+      "contract": {
+        "type": "string",
+        "const": "5c1-v1",
+        "title": "Contract",
+        "default": "5c1-v1"
+      },
+      "dataset": {
+        "type": "string",
+        "enum": [
+          "simulated",
+          "stress_test",
+          "launch"
+        ],
+        "title": "Dataset"
+      },
+      "limit": {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "title": "Limit"
+      },
+      "offset": {
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 0.0,
+        "title": "Offset"
+      },
+      "has_more": {
+        "type": "boolean",
+        "title": "Has More"
+      },
+      "market_id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Market Id"
+      },
+      "export_id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Export Id"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceFact"
+        },
+        "type": "array",
+        "maxItems": 100,
+        "title": "Items"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "dataset",
+      "limit",
+      "offset",
+      "has_more",
+      "market_id",
+      "export_id",
+      "items"
+    ],
+    "title": "EvidenceFactsPage"
+  },
+  "EvidenceFact": {
+    "properties": {
+      "item_key": {
+        "type": "string",
+        "title": "Item Key"
+      },
+      "external_item_id": {
+        "type": "string",
+        "title": "External Item Id"
+      },
+      "key_kind": {
+        "type": "string",
+        "enum": [
+          "item",
+          "gear_level",
+          "gear_suffix",
+          "pet"
+        ],
+        "title": "Key Kind"
+      },
+      "scan_day": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Scan Day"
+      },
+      "native_l": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Native L"
+      },
+      "native_h": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Native H"
+      },
+      "native_a": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Native A"
+      },
+      "native_m": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Native M"
+      },
+      "minimum_copper": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Minimum Copper"
+      },
+      "minimum_origin": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "l",
+              "h_fallback"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Minimum Origin"
+      },
+      "native_fact_count": {
+        "type": "integer",
+        "maximum": 4.0,
+        "minimum": 1.0,
+        "title": "Native Fact Count"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "item_key",
+      "external_item_id",
+      "key_kind",
+      "scan_day",
+      "native_l",
+      "native_h",
+      "native_a",
+      "native_m",
+      "minimum_copper",
+      "minimum_origin",
+      "native_fact_count"
+    ],
+    "title": "EvidenceFact"
+  },
+  "EvidenceReceiptsPage": {
+    "properties": {
+      "contract": {
+        "type": "string",
+        "const": "5c1-v1",
+        "title": "Contract",
+        "default": "5c1-v1"
+      },
+      "dataset": {
+        "type": "string",
+        "enum": [
+          "simulated",
+          "stress_test",
+          "launch"
+        ],
+        "title": "Dataset"
+      },
+      "limit": {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "title": "Limit"
+      },
+      "offset": {
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 0.0,
+        "title": "Offset"
+      },
+      "has_more": {
+        "type": "boolean",
+        "title": "Has More"
+      },
+      "market_id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Market Id"
+      },
+      "export_id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Export Id"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceReceipt"
+        },
+        "type": "array",
+        "maxItems": 100,
+        "title": "Items"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "dataset",
+      "limit",
+      "offset",
+      "has_more",
+      "market_id",
+      "export_id",
+      "items"
+    ],
+    "title": "EvidenceReceiptsPage"
+  },
+  "EvidenceReceipt": {
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,18}$",
+        "title": "Id"
+      },
+      "acquired_at": {
+        "type": "string",
+        "format": "date-time",
+        "title": "Acquired At"
+      },
+      "received_at": {
+        "type": "string",
+        "format": "date-time",
+        "title": "Received At"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "completed",
+          "duplicate"
+        ],
+        "title": "Status"
+      },
+      "source_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Source Sha256"
+      },
+      "input_format": {
+        "type": "string",
+        "enum": [
+          "lua_tables",
+          "cbor_definite",
+          "mixed"
+        ],
+        "title": "Input Format"
+      },
+      "codec_producer": {
+        "type": "string",
+        "enum": [
+          "unverified",
+          "C_EncodingUtil",
+          "LibCBOR"
+        ],
+        "title": "Codec Producer"
+      },
+      "capture_build_known": {
+        "type": "boolean",
+        "title": "Capture Build Known"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "id",
+      "acquired_at",
+      "received_at",
+      "status",
+      "source_sha256",
+      "input_format",
+      "codec_producer",
+      "capture_build_known"
+    ],
+    "title": "EvidenceReceipt"
   }
 }

@@ -47,6 +47,14 @@ La prioridad es mantener el sistema simple, explicable y facil de defender tecni
   preflight offline de capturas ya archivadas, contexto económico explícito,
   escritura sólo mediante TrialDatabase en laboratorios preparados con 006 y
   consulta independiente de estados, hechos y recepciones. Sin alimentar 3A/3B.
+- [Consulta visual de evidencia v2 — 5C.1](docs/PHASE_5C1_EVIDENCE_DASHBOARD.md):
+  sección **Evidencia de mercado**, con dataset, economía y estado explícitos,
+  una fila por item/variante y detalles nativos desplegables, búsqueda por ID y
+  recepciones secundarias. Sólo GET; sin importar ni sincronizar.
+  Diseño aprobado visualmente. La validación usa fixtures sintéticos; datos
+  auténticos siguen pendientes. La próxima etapa investigará y validará proveedores
+  de nombres, IDs, iconos y metadatos reales, con recetas/profesiones como extensión
+  futura; todavía no se implementa el catálogo.
 
 La estructura propuesta del repositorio esta documentada en [Arquitectura](docs/ARCHITECTURE.md#estructura-propuesta-del-repositorio).
 

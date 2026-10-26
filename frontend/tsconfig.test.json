@@ -8,6 +8,8 @@
   },
   "include": [
     "src/api/client.ts",
+    "src/api/evidence.ts",
+    "src/features/evidence/items.ts",
     "src/features/market/MarketResults.tsx",
     "src/features/market/MarketSignals.tsx",
     "src/features/market/ContextControls.tsx",

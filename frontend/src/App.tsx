@@ -12,8 +12,14 @@ import { MarketSignals } from "./features/market/MarketSignals";
 import { contextKey, type WindowInput } from "./features/market/query";
 import { marketLabel, planAnalysis, resolveContext } from "./features/market/selection";
 import { useResource } from "./features/market/useResource";
+import { EvidenceDashboard } from "./features/evidence/EvidenceDashboard";
 
 export function App() {
+  const [view, setView] = useState<"history" | "evidence">("history");
+  return <><nav className="view-nav" aria-label="Secciones del companion"><button aria-pressed={view === "history"} onClick={() => setView("history")}>Análisis histórico</button><button aria-pressed={view === "evidence"} onClick={() => setView("evidence")}>Evidencia de mercado</button></nav>{view === "history" ? <HistoricalDashboard/> : <EvidenceDashboard/>}</>;
+}
+
+function HistoricalDashboard() {
   const [retry, setRetry] = useState(0);
   const [dataset, setDataset] = useState<Dataset | "">("");
   const [marketId, setMarketId] = useState("");

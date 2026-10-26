@@ -25,9 +25,76 @@ export interface CoverageSummary {
   availability_ratio: MetricValue;
 }
 
+export interface EvidenceFact {
+  item_key: string;
+  external_item_id: string;
+  key_kind: "item" | "gear_level" | "gear_suffix" | "pet";
+  scan_day: number | null;
+  native_l: number | null;
+  native_h: number | null;
+  native_a: number | null;
+  native_m: number | null;
+  minimum_copper: number | null;
+  minimum_origin: "l" | "h_fallback" | null;
+  native_fact_count: number;
+}
+
+export interface EvidenceFactsPage {
+  contract?: "5c1-v1";
+  dataset: "simulated" | "stress_test" | "launch";
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  market_id: string;
+  export_id: string;
+  items: Array<EvidenceFact>;
+}
+
+export interface EvidenceMarket {
+  id: string;
+  dataset: "simulated" | "stress_test" | "launch";
+  economy: string;
+  region: string;
+  native_label: string;
+  ruleset: "PvE" | "PvP" | "HC" | "RP";
+  auction_house_scope: "shared" | "faction";
+  faction: string | null;
+}
+
+export interface EvidenceMarketsPage {
+  contract?: "5c1-v1";
+  dataset: "simulated" | "stress_test" | "launch";
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  items: Array<EvidenceMarket>;
+}
+
 export interface EvidenceReason {
   code: "insufficient_observations" | "insufficient_history" | "insufficient_price_coverage" | "insufficient_index_coverage" | "latest_price_missing_or_stale" | "native_l_required" | "known_temporal_basis_required" | "zero_reference" | "zero_baseline" | "unavailable_trend";
   message: string;
+}
+
+export interface EvidenceReceipt {
+  id: string;
+  acquired_at: string;
+  received_at: string;
+  status: "completed" | "duplicate";
+  source_sha256: string;
+  input_format: "lua_tables" | "cbor_definite" | "mixed";
+  codec_producer: "unverified" | "C_EncodingUtil" | "LibCBOR";
+  capture_build_known: boolean;
+}
+
+export interface EvidenceReceiptsPage {
+  contract?: "5c1-v1";
+  dataset: "simulated" | "stress_test" | "launch";
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  market_id: string;
+  export_id: string;
+  items: Array<EvidenceReceipt>;
 }
 
 export interface EvidenceReference {
@@ -38,6 +105,27 @@ export interface EvidenceReference {
   native_field?: "l" | "h" | "a" | null;
   original_item_key?: string | null;
   original_day_key?: string | null;
+}
+
+export interface EvidenceState {
+  id: string;
+  state_hash: string;
+  native_label: string;
+  item_count: number;
+  native_fact_count: number;
+  receipt_count: number;
+  first_acquired_at: string | null;
+  last_acquired_at: string | null;
+}
+
+export interface EvidenceStatesPage {
+  contract?: "5c1-v1";
+  dataset: "simulated" | "stress_test" | "launch";
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  market_id: string;
+  items: Array<EvidenceState>;
 }
 
 export interface HistoricalDeviationSignal {

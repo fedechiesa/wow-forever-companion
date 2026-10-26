@@ -3,7 +3,7 @@ import type { MarketMetricsResponse, MarketSignalsResponse, SeriesDescriptor, Se
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
-export function createMarketApi(baseUrl: string, fetcher: typeof fetch = fetch) {
+export function createReadOnlyClient(baseUrl: string, fetcher: typeof fetch = fetch) {
   const apiBaseUrl = baseUrl.replace(/\/+$/, "");
   async function get<T>(path: string, schema: Parameters<typeof assertResponse>[1], signal: AbortSignal): Promise<T> {
     const timeout = new AbortController();
@@ -34,6 +34,10 @@ export function createMarketApi(baseUrl: string, fetcher: typeof fetch = fetch) 
       throw error;
     } finally { clearTimeout(timer); signal.removeEventListener("abort", abort); }
   }
+  return get;
+}
+export function createMarketApi(baseUrl: string, fetcher: typeof fetch = fetch) {
+  const get = createReadOnlyClient(baseUrl, fetcher);
   function getMarkets(signal: AbortSignal): Promise<PartialMarket[]> { return get("/partial/markets", "markets", signal); }
   async function getItems(marketId: number, signal: AbortSignal): Promise<PartialItem[]> {
     const items: PartialItem[] = [];

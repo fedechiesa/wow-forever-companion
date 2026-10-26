@@ -98,6 +98,6 @@ function validate(value: unknown, schema: Schema, path: string): void {
   }
 }
 
-export function assertResponse(value: unknown, name: "markets" | "items" | "SeriesDiscoveryResponse" | "MarketMetricsResponse" | "MarketSignalsResponse"): void {
+export function assertResponse(value: unknown, name: "markets" | "items" | "SeriesDiscoveryResponse" | "MarketMetricsResponse" | "MarketSignalsResponse" | "EvidenceMarketsPage" | "EvidenceStatesPage" | "EvidenceFactsPage" | "EvidenceReceiptsPage"): void {
   validate(value, partialSchemas[name] ?? registry[name], name);
 }

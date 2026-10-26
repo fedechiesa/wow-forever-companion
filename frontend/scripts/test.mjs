@@ -26,7 +26,7 @@ try {
       });
     }
     code = 0;
-    for (const suite of live ? ["live.test.mjs"] : ["market.test.mjs", "app.test.mjs"]) {
+    for (const suite of live ? ["live.test.mjs"] : ["market.test.mjs", "app.test.mjs", "evidence.test.mjs"]) {
       const tested = spawnSync(process.execPath, [join(root, "tests", suite)], {
         cwd: root, stdio: "inherit", env: { ...process.env, NODE_ENV: "test", TEST_BUILD_DIR: buildDir, NODE_PATH: join(root, "node_modules") },
       });

@@ -7,6 +7,7 @@ from app.api.items import router as items_router
 from app.api.snapshots import router as snapshots_router
 from app.api.partial import router as partial_router
 from app.api.market import router as market_router
+from app.api.evidence import router as evidence_router
 from app.core.config import settings
 
 
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(snapshots_router)
     app.include_router(partial_router)
     app.include_router(market_router)
+    app.include_router(evidence_router)
     return app
 
 

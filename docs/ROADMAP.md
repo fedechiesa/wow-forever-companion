@@ -17,6 +17,22 @@ ranking, sincronización automática y ampliaciones de interfaz quedan después.
   offline y lectores de mercados/estados/hechos/recepciones v2 validados. Sólo fixtures
   sintéticos y PostgreSQL aislado; sin escrituras en desarrollo ni cambios a
   acumulados 003, frontend o 3A/3B. [Entrega y validación](PHASE_5B2_MANUAL_INGESTION.md).
+- **5C.1 aprobada visualmente y cerrada técnicamente:** consulta de evidencia v2 con API
+  exclusivamente GET, selección de dataset/economía/estado y tabla por item con
+  registros nativos/recepciones desplegables y filtro por ID/variante. Fixtures
+  sintéticos; sin sincronización, importación auténtica ni cálculos nuevos.
+  Diseño simplificado, moneda compacta, búsqueda y detalles aprobados por el usuario.
+  [Arquitectura y pruebas](PHASE_5C1_EVIDENCE_DASHBOARD.md).
+- **Próxima etapa — investigación y validación de proveedores reales:** evaluar
+  nombres, IDs, iconos y metadatos de WoW Forever; comprobar procedencia,
+  producto/build/compatibilidad, locale, cobertura y condiciones de reutilización.
+  Validar una muestra pequeña y sus posibles bindings contextuales a v2, manteniendo
+  simulación, mascotas y variantes separadas. Considerar recetas y profesiones
+  como extensión futura, con fuentes y relaciones propias que también deben
+  validarse. El catálogo fresh local es ficticio y items de Fase 2 no acredita
+  nombres auténticos para v2. Esta etapa queda documentada, sin scraper,
+  integración, catálogo ni otras funcionalidades implementadas en el cierre.
+  [Investigación existente](ITEM_CATALOG_RESEARCH.md).
 
 Antes de usar datos auténticos: revisar evidencia privada de región técnica,
 economía/reino o ámbito conectado, alcance compartido/facción, origen, fase y

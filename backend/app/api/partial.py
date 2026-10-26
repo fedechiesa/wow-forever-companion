@@ -39,7 +39,9 @@ def list_partial_imports(limit: int = Query(50, ge=1, le=100)):
 @router.get("/markets")
 def list_partial_markets():
     with connect() as c:
-        return c.execute("SELECT * FROM partial_markets ORDER BY dataset,region,market_key").fetchall()
+        return c.execute("""SELECT * FROM partial_markets
+            WHERE to_jsonb(partial_markets)->>'economic_identity' IS NULL
+            ORDER BY dataset,region,market_key""").fetchall()
 
 
 @router.get("/items")
