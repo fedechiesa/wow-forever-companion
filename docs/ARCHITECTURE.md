@@ -528,11 +528,37 @@ permitiendo sólo su finalización completed/duplicate con cero cambios en 003.
 El nuevo flujo conserva hechos nativos, sin poblar el acumulado 003 ni alimentar
 3A/3B. Datasets nuevos simulated/stress_test/launch no reinterpretan real legacy.
 Toda escritura 341 exige binding local verificado, 005/006 y TrialDatabase;
-quitar el binding no permite volver al importador anterior. La CLI 341 queda
-bloqueada para importación hasta integrar el contrato completo; check-target
-mantiene su comprobación de identidad sin escritura. 340 permanece compatible.
+quitar el binding no permite volver al importador anterior. La CLI legacy 341
+sigue bloqueada; check-target mantiene su comprobación de identidad sin escritura.
+340 permanece compatible. La integración manual completa está en 5B.2, abajo.
 No hay sincronización, cambios del watcher ni importaciones auténticas. Detalles,
 ejemplos y límites en la sección 9 del informe 5B.1.
+
+### Ingestión manual y lectura nativa v2 de Fase 5B.2
+
+`scripts/ingest_local_capture.py preflight|ingest` recibe un directorio privado
+5A, el SHA-256 completo de una captura publicada y un sidecar privado
+`verified-local-capture-v1`. `local_capture/preflight.py` reutiliza las lecturas
+estables, los controles de archivo y `prepare_local_capture`: recalcula hashes,
+estructura/conteos y procedencia, y exige todas las identidades económicas.
+Preflight no importa settings ni PostgreSQL. Ingest vuelve a ejecutar el mismo
+preflight en esa invocación y sólo después abre TrialDatabase; no consume un
+recibo de preflight anterior como autorización. No hay fallback de destino ni DDL.
+El servicio existente exige 005/006 antes del primer INSERT y conserva el original
+en 5A, el binding en la recepción y los hechos una sola vez por estado sellado.
+
+`ingestion/local_readers.py` ofrece markets, states, state, facts y receipts;
+`scripts/read_local_evidence.py` los expone con un DSN elegido por nombre de
+variable de entorno, sin defaults. Usa sesiones READ ONLY y snapshots REPEATABLE
+READ. Sólo consulta mercados verificados y exports v2 sellados, nunca 003.
+La membresía de un estado se resuelve desde las identidades del manifest, incluso
+para mercados vacíos. Facts exige export_id y market_id; no une recepciones ni
+selecciona implícitamente un estado como último scan. Receipts conserva por
+separado adquisición, recepción SQL y contexto completo de cada observador.
+El lector v2 no usa el source_id de la cabecera para filtrar otros observadores.
+No hay endpoints nuevos, cambios de frontend ni integración con 3A/3B.
+
+Uso, pruebas y bloqueos auténticos: [PHASE_5B2_MANUAL_INGESTION.md](PHASE_5B2_MANUAL_INGESTION.md).
 
 ## Contrato de snapshot completo de Fase 2
 

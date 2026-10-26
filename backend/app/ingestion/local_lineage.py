@@ -1,4 +1,4 @@
-"""Verified local lineage preparation; persistence still belongs to the trial service.
+"""Verified local lineage preparation for the manual archive CLI and trial service.
 
 Economic identity excludes the observer, native label, evidence references and
 acquisition time. Native labels and original keys remain in immutable facts.
@@ -99,7 +99,8 @@ def prepare_local_capture(raw: bytes, metadata: CaptureMetadata, context: Verifi
     """Validate an already-read archive buffer. No file I/O, settings or SQL.
 
     Returned evidence can only be written through PartialIngestionService with
-    a verified TrialDatabase. No CLI, watcher or HTTP path invokes this helper.
+    a verified TrialDatabase. The manual archive CLI invokes this helper only
+    after selecting and verifying a published capture. Watcher/HTTP do not.
     """
     metadata = CaptureMetadata.model_validate(metadata.model_dump())
     context = VerifiedLocalContext.model_validate(context.model_dump())

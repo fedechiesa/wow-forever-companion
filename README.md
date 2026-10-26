@@ -42,8 +42,11 @@ La prioridad es mantener el sistema simple, explicable y facil de defender tecni
 - [Preparación segura de ingestión local 5B.1](docs/PHASE_5B1_INGESTION_READINESS.md):
   precios extremos sólo como evidencia local. La actualización 5B.1.1 prepara
   identidad económica y linaje persistente con migración 006, validados con
-  fixtures en laboratorio. Sin sincronización ni importación auténtica;
-  CLI 341 bloqueada hasta integrar el contrato completo de captura.
+  fixtures en laboratorio. Sin sincronización ni importación auténtica.
+- [Ingestión manual protegida y lectores v2 — 5B.2](docs/PHASE_5B2_MANUAL_INGESTION.md):
+  preflight offline de capturas ya archivadas, contexto económico explícito,
+  escritura sólo mediante TrialDatabase en laboratorios preparados con 006 y
+  consulta independiente de estados, hechos y recepciones. Sin alimentar 3A/3B.
 
 La estructura propuesta del repositorio esta documentada en [Arquitectura](docs/ARCHITECTURE.md#estructura-propuesta-del-repositorio).
 
@@ -300,10 +303,15 @@ son **SIMULATED**. Los tres archivos generados (Lua, catálogo y contexto) queda
 en `data/imports/fresh/`, ignorados por Git. Opciones: `--seed`, `--days`, `--items`,
 `--markets` y `--output`. No se representan ventas ni auction_count.
 
-Para capturas auténticas 341, seguir [la validación real](docs/FIRST_REAL_AUCTIONATOR_VALIDATION.md)
-y [el procedimiento de trial](docs/BETA_DATA_READINESS.md#14-persistencia-341-con-procedencia-verificada-y-destino-trial).
-El perfil explícito `cbor-definite`, la migración 005, la procedencia vinculada al
-hash y el destino `--trial` verificado son obligatorios para ese flujo. La stress
+Para los antecedentes de capturas auténticas 341, ver [la validación real](docs/FIRST_REAL_AUCTIONATOR_VALIDATION.md)
+y [el procedimiento histórico de trial](docs/BETA_DATA_READINESS.md#14-persistencia-341-con-procedencia-verificada-y-destino-trial).
+El procedimiento manual vigente es [5B.2](docs/PHASE_5B2_MANUAL_INGESTION.md):
+captura publicada de 5A, contexto verificado completo y laboratorio preparado
+con 006. `import_auctionator.py` sigue bloqueando 341 sin ese enlace; usar
+`ingest_local_capture.py preflight|ingest`. No se autoriza todavía una importación auténtica.
+Para CBOR serializado se exige el perfil explícito `cbor-definite`. Las migraciones
+005/006, la procedencia vinculada al hash, la identidad económica explícita y
+el destino TrialDatabase verificado son obligatorios. La stress
 test usa un dataset independiente `stress_test`; no representa el lanzamiento.
 No completar la región por idioma, ubicación o nombre PvP.
 

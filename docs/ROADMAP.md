@@ -2,6 +2,30 @@
 
 Este roadmap prioriza aprender rapido y mantener una arquitectura explicable. El objetivo no es construir todas las ideas posibles, sino llegar a una primera version usable de Market Intelligence para el Auction House.
 
+## Prioridad prelaunch — 26/10/2026
+
+Fecha objetivo comunicada para el lanzamiento: **04/11/2026**. El MVP personal
+prioriza conservar originales, importar manualmente evidencia validada y consultar
+estados económicos auténticos cuando su contexto esté verificado. IA, predicción,
+ranking, sincronización automática y ampliaciones de interfaz quedan después.
+
+- **5A.1/5A.2:** archivado local y watcher implementados. Primera prueba con
+  `/reload` real aún pendiente; el watcher sólo archiva, no importa.
+- **5B.1/5B.1.1:** política de precios extremos, identidad económica y linaje
+  implementados en la migración publicada 006. No se modifica 001–006.
+- **5B.2 cerrada tras auditoría:** CLI manual de capturas publicadas, preflight
+  offline y lectores de mercados/estados/hechos/recepciones v2 validados. Sólo fixtures
+  sintéticos y PostgreSQL aislado; sin escrituras en desarrollo ni cambios a
+  acumulados 003, frontend o 3A/3B. [Entrega y validación](PHASE_5B2_MANUAL_INGESTION.md).
+
+Antes de usar datos auténticos: revisar evidencia privada de región técnica,
+economía/reino o ámbito conectado, alcance compartido/facción, origen, fase y
+codec; probar el archivado con el cliente real y acordar una primera importación
+manual en laboratorio. Capturas con precios >2147483647 permanecen completas en
+el archivo local y bloqueadas para ingestión. Adquisición/recepción no son hora
+de scan; varios estados del bucket 2485 no crean varios días de historia.
+La aprobación de fixtures no habilita automáticamente una importación auténtica.
+
 ## Fase 0: Definicion inicial
 
 Estado: documentacion inicial.
