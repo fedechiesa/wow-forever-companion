@@ -21,6 +21,8 @@ const { assertResponse } = require(join(process.env.TEST_BUILD_DIR, "api/contrac
 const { collectStateFacts, groupEvidenceItems, filterEvidenceItems } = require(join(process.env.TEST_BUILD_DIR, "features/evidence/items.js"));
 const { MoneyValue } = require(join(process.env.TEST_BUILD_DIR, "components/MoneyValue.js"));
 const { renderToStaticMarkup } = require("react-dom/server");
+const { EvidenceItemsTable } = require(join(process.env.TEST_BUILD_DIR, "features/evidence/EvidenceItemsTable.js"));
+const { createCatalogApi, authorizedIcon } = require(join(process.env.TEST_BUILD_DIR, "api/catalog.js"));
 
 const markets = [1,2].map(id => ({ id: String(id), dataset: "simulated", economy: `Synthetic economy ${id}`, region: "synthetic-eu", native_label: "PvP", ruleset: "PvP", auction_house_scope: "shared", faction: null }));
 const state = id => ({ id: String(id), state_hash: "a".repeat(64), native_label: "PvP", item_count: 1, native_fact_count: 4, receipt_count: 2, first_acquired_at: "2026-10-24T12:00:00Z", last_acquired_at: "2026-10-25T12:00:00Z" });
@@ -41,6 +43,7 @@ function mockApi(override=()=>undefined) {
     const value=override(url,options);
     if (value!==undefined) return value;
     if (url.pathname === "/partial/markets") return json([]);
+    if (url.pathname === "/catalog/items") return json({contract:"5d2-v1",items:[]});
     if (url.pathname === "/evidence/v2/markets") return json(page(url,markets.map(m=>({...m,dataset:url.searchParams.get("dataset")}))));
     if (url.pathname.endsWith("/states")) return json(statesPage(url));
     if (url.pathname.endsWith("/facts")) return json(detailPage(url,rows));
@@ -294,4 +297,122 @@ test("responsive summary keeps labelled item rows and inline denominations at mo
     assert.match(css,/\.evidence-table \.coin-amount \{[^}]*flex-wrap:nowrap/);
     assert.match(css,/\.evidence-table \.coin-denomination small \{ display:inline/);
   } finally { Object.defineProperty(window,"innerWidth",{configurable:true,value:original}); }
+});
+
+const catalogFixture = (updates={}) => ({
+  product:"forever",entity_kind:"item",item_id:2589,name:"Synthetic Linen Fixture",language:null,
+  quality:"COMMON",category:"Trade Goods",subclass:"Cloth",build:null,compatibility:"provider_product_only",
+  icon_ref:null,icon_permission:"unverified",provider:"ahledger",
+  source_url:"https://api.ahledger.com/v1/items/2589?game=forever",
+  attribution_url:"https://ahledger.com/items/2589?utm_source=ahledger_api",
+  fetched_at:Date.now()/1000-1,expires_at:Date.now()/1000+250,...updates,
+});
+const plainFacts = () => rows.map(row=>({...row,item_key:"2589",external_item_id:"2589",key_kind:"item"}));
+async function mountCatalog(items=groupEvidenceItems(plainFacts()), catalog=[catalogFixture()]) {
+  const container=document.createElement("div");document.body.append(container);root=createRoot(container);
+  await act(async()=>root.render(React.createElement(EvidenceItemsTable,{items,catalog})));
+}
+
+test("verified name, attribution, unknown language/build and ID preserve all economic evidence",async()=> {
+  const facts=plainFacts(),before=JSON.stringify(facts);
+  const items=groupEvidenceItems(facts);
+  await mountCatalog(items);
+  const row=document.querySelector(".evidence-item-row");
+  assert.match(row.textContent,/Synthetic Linen Fixture/);assert.match(row.textContent,/Item 2589/);
+  assert.match(row.textContent,/Idioma desconocido · build no verificado/);
+  assert.match(row.querySelector("a").href,/utm_source=ahledger_api/);
+  assert.equal(row.querySelector("img"),null);assert.ok(row.querySelector(".catalog-placeholder"));
+  await openItem();assert.match(row.textContent,/2147483647/);assert.match(row.textContent,/85490/);
+  assert.equal(JSON.stringify(facts),before);assert.equal(items[0].lastMinimum,85490);
+  await search("linen 2589");assert.equal(document.querySelectorAll(".evidence-item-row").length,1);
+  await search("2770");assert.equal(document.querySelectorAll(".evidence-item-row").length,0);
+});
+
+test("authorized local icon renders, failed image falls back without losing name or evidence",async()=> {
+  await mountCatalog(undefined,[catalogFixture({icon_ref:"/assets/catalog/test.png",icon_permission:"authorized"})]);
+  const image=document.querySelector(".catalog-identity img");assert.ok(image);assert.equal(image.width,28);
+  await act(async()=>image.dispatchEvent(new Event("error")));
+  assert.equal(document.querySelector(".catalog-identity img"),null);
+  assert.ok(document.querySelector(".catalog-placeholder"));assert.match(document.body.textContent,/Synthetic Linen Fixture/);
+  assert.equal(authorizedIcon(catalogFixture({icon_ref:"https://render.worldofwarcraft.com/test.jpg",icon_permission:"authorized"})),undefined);
+  assert.equal(authorizedIcon(catalogFixture({icon_ref:"/assets/catalog/test.png"})),undefined);
+});
+
+test("plain item metadata never resolves variants or pet species sharing its number",async()=> {
+  const variants=["2589","g:2589:60","g:2589:61","s:2589:12:34","p:2589"].map((key,i)=>({...rows[0],item_key:key,external_item_id:"2589",key_kind:["item","gear_level","gear_level","gear_suffix","pet"][i]}));
+  await mountCatalog(groupEvidenceItems(variants));
+  assert.equal(document.querySelectorAll(".evidence-item-row").length,5);
+  assert.equal(document.querySelectorAll(".catalog-identity").length,1);
+  assert.match(document.body.textContent,/Especie 2589/);
+  await search("g:2589:61");assert.equal(document.querySelectorAll(".evidence-item-row").length,1);
+  assert.match(document.body.textContent,/Nivel 61/);
+});
+
+test("absent, expired and alternative metadata keep explicit provenance",async()=> {
+  await mountCatalog(undefined,[catalogFixture({expires_at:Date.now()/1000-1})]);
+  assert.equal(document.querySelector(".catalog-identity"),null);assert.match(document.body.textContent,/Item 2589/);
+  await act(async()=>root.render(React.createElement(EvidenceItemsTable,{items:groupEvidenceItems(plainFacts()),catalog:[catalogFixture({provider:"foreverdb",source_url:"https://foreverdb.net/api/v1/items/2589",attribution_url:"https://foreverdb.net"})]})));
+  assert.equal(document.querySelector(".catalog-identity a").textContent,"ForeverDB");
+});
+
+test("cache expires while mounted without contacting any provider",async()=> {
+  await mountCatalog(undefined,[catalogFixture({expires_at:Date.now()/1000+0.08})]);
+  assert.ok(document.querySelector(".catalog-identity"));await flush(120);
+  assert.equal(document.querySelector(".catalog-identity"),null);assert.match(document.body.textContent,/Item 2589/);
+});
+
+test("catalog runtime rejects duplicate identity, unsafe attribution, malformed JSON and stale records",async()=> {
+  const signal=new AbortController().signal;
+  for(const items of [[catalogFixture(),catalogFixture()], [catalogFixture({attribution_url:"javascript:alert(1)"})], [catalogFixture({expires_at:1})], [catalogFixture({product:"classic"})]]) {
+    await assert.rejects(createCatalogApi("http://local",async()=>json({contract:"5d2-v1",items}))(signal));
+  }
+  await assert.rejects(createCatalogApi("http://local",async()=>new Response("{"))(signal));
+});
+
+test("launch uses only local catalog GET; simulated data never requests authentic names",async()=> {
+  const calls=mockApi(url=>url.pathname.endsWith("/facts")?json(detailPage(url,plainFacts())):url.pathname==="/catalog/items"?json({contract:"5d2-v1",items:[catalogFixture()]}):undefined);
+  await mount();await chooseState();
+  assert.equal(calls.filter(call=>call.url.pathname==="/catalog/items").length,0);
+  assert.equal(document.querySelector(".catalog-identity"),null);
+  await change("Dataset de evidencia","launch");await waitFor(()=>select("Economía / mercado").options.length>1);
+  await change("Economía / mercado","1");await waitFor(()=>select("Estado económico").options.length>1);
+  await change("Estado económico","10");await waitFor(()=>document.querySelector(".catalog-identity"));
+  assert.ok(calls.some(call=>call.url.pathname==="/catalog/items"));
+  assert.ok(calls.every(call=>call.url.origin==="http://test.invalid"));
+  const catalogCalls=calls.filter(call=>call.url.pathname==="/catalog/items").length;
+  for(const dataset of ["stress_test","simulated"]) {
+    await change("Dataset de evidencia",dataset);
+    assert.equal(document.querySelector(".catalog-identity"),null);
+    await waitFor(()=>select("Economía / mercado").options.length>1);
+    await change("Economía / mercado","1");await waitFor(()=>select("Estado económico").options.length>1);
+    await change("Estado económico","10");await waitFor(()=>document.querySelector(".evidence-item-row"));
+    assert.equal(document.querySelector(".catalog-identity"),null);
+    assert.equal(calls.filter(call=>call.url.pathname==="/catalog/items").length,catalogCalls);
+  }
+});
+
+test("launch catalog expiry restores Item ID without polling the local API or provider",async()=> {
+  const calls=mockApi(url=>url.pathname.endsWith("/facts")?json(detailPage(url,plainFacts())):url.pathname==="/catalog/items"?json({contract:"5d2-v1",items:[catalogFixture({expires_at:Date.now()/1000+0.3})]}):undefined);
+  await mount();await change("Dataset de evidencia","launch");await waitFor(()=>select("Economía / mercado").options.length>1);
+  await change("Economía / mercado","1");await waitFor(()=>select("Estado económico").options.length>1);
+  await change("Estado económico","10");await waitFor(()=>document.querySelector(".catalog-identity"));
+  await waitFor(()=>document.querySelector(".evidence-item-row"));
+  const count=calls.length;
+  await flush(400);
+  assert.equal(document.querySelector(".catalog-identity"),null);
+  assert.match(document.querySelector(".evidence-item-row").textContent,/Item 2589/);
+  assert.equal(calls.length,count);
+  assert.ok(calls.every(call=>call.url.origin==="http://test.invalid"));
+});
+
+test("catalog failure leaves launch evidence readable and responsive names wrap",async()=> {
+  mockApi(url=>url.pathname.endsWith("/facts")?json(detailPage(url,plainFacts())):url.pathname==="/catalog/items"?json({},503):undefined);
+  await mount();await change("Dataset de evidencia","launch");await waitFor(()=>select("Economía / mercado").options.length>1);
+  await change("Economía / mercado","1");await waitFor(()=>select("Estado económico").options.length>1);
+  await change("Estado económico","10");await waitFor(()=>document.querySelector(".evidence-item-row"));
+  await waitFor(()=>document.body.textContent.includes("Catálogo local no disponible"));
+  assert.match(document.querySelector(".evidence-item-row").textContent,/Item 2589/);
+  assert.equal(document.querySelectorAll(".evidence-item-row>td[data-label]").length,4);
+  const css=readFileSync(new URL("../src/styles.css",import.meta.url),"utf8");
+  assert.match(css,/\.catalog-identity>span:last-child \{ min-width:0; overflow-wrap:anywhere/);
 });

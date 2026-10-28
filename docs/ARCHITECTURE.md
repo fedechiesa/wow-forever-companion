@@ -1,5 +1,19 @@
 # Arquitectura
 
+## Catálogo descriptivo 5D.2
+
+El MVP incorpora `app/catalog.py`: cliente AHledger por ID, validación y caché
+temporal en archivos ignorados, independiente de PostgreSQL, ingestión y precios.
+La CLI manual consulta hasta cuatro IDs; `GET /catalog/items` sólo lee registros
+locales vigentes, sin consultas al proveedor durante el render. TTL por headers,
+máximo 300s, sin servir datos vencidos. No hay migraciones ni sincronización.
+
+Evidencia launch asocia sólo IDs simples exactos con nombre y procedencia; variantes,
+mascotas y simulación conservan sus identidades. Build/idioma permanecen desconocidos
+sin contrato verificado; no se deducen de Classic o del build global del proveedor.
+Los iconos remotos quedan bloqueados por permisos pendientes; placeholder local.
+No cambia ningún hecho ni cálculo 3A/3B. [Contrato, uso y límites](PHASE_5D2_ITEM_CATALOG.md).
+
 ## Vision general
 
 WoW Forever Companion se organiza alrededor de un nucleo de Market Intelligence para el Auction House. La aplicacion debe poder cambiar la fuente de datos sin reescribir el analisis, la base de datos ni la experiencia de usuario.

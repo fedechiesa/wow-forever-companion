@@ -23,16 +23,23 @@ ranking, sincronización automática y ampliaciones de interfaz quedan después.
   sintéticos; sin sincronización, importación auténtica ni cálculos nuevos.
   Diseño simplificado, moneda compacta, búsqueda y detalles aprobados por el usuario.
   [Arquitectura y pruebas](PHASE_5C1_EVIDENCE_DASHBOARD.md).
-- **Próxima etapa — investigación y validación de proveedores reales:** evaluar
-  nombres, IDs, iconos y metadatos de WoW Forever; comprobar procedencia,
-  producto/build/compatibilidad, locale, cobertura y condiciones de reutilización.
-  Validar una muestra pequeña y sus posibles bindings contextuales a v2, manteniendo
-  simulación, mascotas y variantes separadas. Considerar recetas y profesiones
-  como extensión futura, con fuentes y relaciones propias que también deben
-  validarse. El catálogo fresh local es ficticio y items de Fase 2 no acredita
-  nombres auténticos para v2. Esta etapa queda documentada, sin scraper,
-  integración, catálogo ni otras funcionalidades implementadas en el cierre.
-  [Investigación existente](ITEM_CATALOG_RESEARCH.md).
+- **5D.1 — investigación de catálogo real:** AHledger respondió por GET público
+  con metadatos de los cuatro IDs de muestra; sus cuatro iconos fueron accesibles
+  y una receta devolvió ingrediente/cantidades. ForeverDB documenta API con
+  aprobación/clave, todavía sin probar; Warcraft Forever sirve como contraste HTML.
+  **Cerrada el 28/10 para el MVP de metadatos:** condiciones públicas de API y
+  caché revalidadas; build/locale por item e imágenes siguen pendientes. Se conserva
+  el informe original y su veredicto histórico. [Pruebas y cierre](PHASE_5D1_ITEM_CATALOG_RESEARCH.md).
+  Se conserva la [investigación histórica](ITEM_CATALOG_RESEARCH.md).
+- **5D.2 — cerrada técnicamente, publicación autorizada:** cliente AHledger puntual por ID,
+  CLI manual de hasta cuatro IDs, caché temporal en archivos sin PostgreSQL y GET
+  local separado. Evidencia v2 launch muestra nombre/ID/procedencia y permite
+  búsqueda por nombre; sin catálogo vigente conserva IDs. Placeholder local sin
+  imágenes remotas hasta autorización. No resuelve variantes, mascotas o simulados
+  por coincidencia numérica. Sin migraciones, cambios 3A/3B, captura/importación
+  auténtica ni sincronización. [Uso, validación y límites](PHASE_5D2_ITEM_CATALOG.md).
+  Persistencia offline más allá del TTL e iconos requieren aclaración de permisos;
+  recetas, profesiones y ForeverDB siguen futuros.
 
 Antes de usar datos auténticos: revisar evidencia privada de región técnica,
 economía/reino o ámbito conectado, alcance compartido/facción, origen, fase y

@@ -2017,5 +2017,182 @@
       "capture_build_known"
     ],
     "title": "EvidenceReceipt"
+  },
+  "CatalogPage": {
+    "properties": {
+      "contract": {
+        "type": "string",
+        "const": "5d2-v1",
+        "title": "Contract",
+        "default": "5d2-v1"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/CatalogItem"
+        },
+        "type": "array",
+        "maxItems": 128,
+        "title": "Items"
+      }
+    },
+    "type": "object",
+    "required": [
+      "items"
+    ],
+    "title": "CatalogPage"
+  },
+  "CatalogItem": {
+    "properties": {
+      "product": {
+        "type": "string",
+        "const": "forever",
+        "title": "Product",
+        "default": "forever"
+      },
+      "entity_kind": {
+        "type": "string",
+        "const": "item",
+        "title": "Entity Kind",
+        "default": "item"
+      },
+      "item_id": {
+        "type": "integer",
+        "maximum": 2147483647.0,
+        "minimum": 1.0,
+        "title": "Item Id"
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 256,
+        "minLength": 1,
+        "title": "Name"
+      },
+      "language": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 32
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Language"
+      },
+      "quality": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 64
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Quality"
+      },
+      "category": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 128
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Category"
+      },
+      "subclass": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 128
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Subclass"
+      },
+      "build": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 64
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Build"
+      },
+      "compatibility": {
+        "type": "string",
+        "const": "provider_product_only",
+        "title": "Compatibility",
+        "default": "provider_product_only"
+      },
+      "icon_ref": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Icon Ref"
+      },
+      "icon_permission": {
+        "type": "string",
+        "enum": [
+          "unverified",
+          "authorized"
+        ],
+        "title": "Icon Permission",
+        "default": "unverified"
+      },
+      "provider": {
+        "type": "string",
+        "enum": [
+          "ahledger",
+          "foreverdb"
+        ],
+        "title": "Provider"
+      },
+      "source_url": {
+        "type": "string",
+        "maxLength": 2048,
+        "title": "Source Url"
+      },
+      "attribution_url": {
+        "type": "string",
+        "maxLength": 2048,
+        "title": "Attribution Url"
+      },
+      "fetched_at": {
+        "type": "number",
+        "minimum": 0.0,
+        "title": "Fetched At"
+      },
+      "expires_at": {
+        "type": "number",
+        "minimum": 0.0,
+        "title": "Expires At"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "item_id",
+      "name",
+      "provider",
+      "source_url",
+      "attribution_url",
+      "fetched_at",
+      "expires_at"
+    ],
+    "title": "CatalogItem"
   }
 }

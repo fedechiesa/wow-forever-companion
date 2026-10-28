@@ -1402,6 +1402,11 @@ footer i {
 
 /* The evidence summary shares MoneyValue arithmetic; only its layout changes. */
 .evidence-item-table { min-width:760px; table-layout:fixed }
+.catalog-identity { display:flex; align-items:flex-start; gap:8px; min-width:0 }
+.catalog-identity>span:last-child { min-width:0; overflow-wrap:anywhere }
+.catalog-identity img,.catalog-placeholder { flex-shrink:0; width:28px; height:28px; border-radius:4px }
+.catalog-placeholder { display:inline-flex; align-items:center; justify-content:center; color:var(--muted); border:1px solid var(--border) }
+.catalog-identity small { font-size:.68rem; font-weight:400; line-height:1.5 }
 .evidence-item-table thead th:first-child { width:15% }
 .evidence-item-table thead th:last-child { width:25% }
 .evidence-item-table td,.evidence-item-table th { overflow-wrap:anywhere }

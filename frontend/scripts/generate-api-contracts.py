@@ -45,6 +45,7 @@ collect("MarketSignalsResponse")
 collect("SeriesDiscoveryResponse")
 for response in ("EvidenceMarketsPage", "EvidenceStatesPage", "EvidenceFactsPage", "EvidenceReceiptsPage"):
     collect(response)
+collect("CatalogPage")
 lines = ["// Generated from FastAPI OpenAPI. Run scripts/generate-api-contracts.py; do not edit."]
 for name, schema in sorted(selected.items()):
     lines.append(f"export interface {name} {{")

@@ -1,5 +1,10 @@
 # WoW Forever Companion
 
+Catálogo prelaunch 5D.2: [uso y validación](docs/PHASE_5D2_ITEM_CATALOG.md).
+Consulta manual puntual a AHledger, caché temporal separada de precios y nombres
+en Evidencia launch; iconos con placeholder hasta autorización. Sin migraciones,
+importación auténtica ni sincronización automática.
+
 WoW Forever Companion es un proyecto personal de portfolio y una herramienta pensada para acompanar el juego desde el lanzamiento de WoW Forever. El foco inicial es construir Market Intelligence para el Auction House: analizar mínimos guardados, disponibilidad máxima, cambios y dispersión a partir de evidencia histórica. Las oportunidades pertenecen a una fase posterior.
 
 Auctionator 340 y 341 aportan observaciones parciales de precios y disponibilidad. La compatibilidad offline de 341 se comprobó con un SavedVariables auténtico de la stress test del 21/10/2026: siete items en un único índice nativo, 2485. La persistencia está preparada y probada con fixtures en laboratorio, pero **todavía no se importaron capturas auténticas**. Siguen pendientes región técnica y procedencia completa; el build en el momento de captura y el productor efectivo del codec no están confirmados. Los snapshots completos de Fase 2 conservan su contrato independiente.

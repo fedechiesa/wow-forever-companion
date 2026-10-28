@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { apiBaseUrl } from "../../api/backend";
+import { createCatalogApi } from "../../api/catalog";
 import { createEvidenceApi, type EvidenceDataset } from "../../api/evidence";
 import { StatusPanel } from "../../components/StatusPanel";
 import { useResource, type Resource } from "../market/useResource";
@@ -7,6 +8,7 @@ import { collectStateFacts, groupEvidenceItems } from "./items";
 import { EvidenceItemsTable } from "./EvidenceItemsTable";
 
 const api = createEvidenceApi(apiBaseUrl);
+const catalogApi = createCatalogApi(apiBaseUrl);
 const date = (value: string | null) => value ? new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(value)) + " UTC" : "Sin adquisición registrada";
 
 function Progress({ resource, onRetry }: { resource: Resource<unknown>; onRetry: () => void }) {
@@ -40,6 +42,7 @@ export function EvidenceDashboard() {
     return groupEvidenceItems(rows);
   });
   const receipts = useResource(state && showReceipts ? `evidence:receipts:${dataset}:${marketId}:${stateId}:${receiptsOffset}:${retry}` : null, signal => api.receipts(dataset as EvidenceDataset, marketId, stateId, receiptsOffset, signal));
+  const catalog = useResource(state && dataset === "launch" ? `catalog:${dataset}:${marketId}:${stateId}:${retry}` : null, catalogApi);
   function resetState() { setStateId(""); setReceiptsOffset(0); setShowReceipts(false); }
   function resetMarket() { setMarketId(""); setStatesOffset(0); resetState(); }
 
@@ -66,7 +69,8 @@ export function EvidenceDashboard() {
           <p>Adquisición: <time dateTime={state.first_acquired_at ?? undefined}>{date(state.first_acquired_at)}</time>. Es la hora de copia, no la fecha de cada precio.</p>
           <p className="evidence-warning" role="note">{dataset === "simulated" ? "Datos sintéticos. " : dataset === "stress_test" ? "Datos de estrés; no representan el lanzamiento. " : "Dataset de lanzamiento declarado. "}Precios guardados, sin oferta en vivo. La disponibilidad no indica ventas.</p>
           <Progress resource={facts} onRetry={reload}/>
-          {facts.status === "success" && (!facts.data.length ? <StatusPanel title="Sin items con datos">El mercado puede estar vacío dentro de un estado que contiene otros mercados.</StatusPanel> : <EvidenceItemsTable key={`${dataset}:${marketId}:${stateId}`} items={facts.data}/>)}
+          {catalog.status === "error" && <p className="muted">Catálogo local no disponible; se muestran IDs. <button onClick={reload}>Reintentar</button></p>}
+          {facts.status === "success" && (!facts.data.length ? <StatusPanel title="Sin items con datos">El mercado puede estar vacío dentro de un estado que contiene otros mercados.</StatusPanel> : <EvidenceItemsTable key={`${dataset}:${marketId}:${stateId}`} items={facts.data} catalog={catalog.status === "success" ? catalog.data : undefined}/>)}
         </section>
         <details className="panel evidence-provenance" open={showReceipts} onToggle={e => setShowReceipts(e.currentTarget.open)}><summary>Procedencia y recepciones · información avanzada</summary>
           <p>{state.item_count} estructuras de item · {state.native_fact_count} hechos · {state.receipt_count} recepciones. Reglas {market!.ruleset} · etiqueta nativa {state.native_label}.</p>

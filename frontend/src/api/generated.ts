@@ -12,6 +12,31 @@ export interface BucketPoint {
   availability_evidence?: EvidenceReference | null;
 }
 
+export interface CatalogItem {
+  product?: "forever";
+  entity_kind?: "item";
+  item_id: number;
+  name: string;
+  language?: string | null;
+  quality?: string | null;
+  category?: string | null;
+  subclass?: string | null;
+  build?: string | null;
+  compatibility?: "provider_product_only";
+  icon_ref?: string | null;
+  icon_permission?: "unverified" | "authorized";
+  provider: "ahledger" | "foreverdb";
+  source_url: string;
+  attribution_url: string;
+  fetched_at: number;
+  expires_at: number;
+}
+
+export interface CatalogPage {
+  contract?: "5d2-v1";
+  items: Array<CatalogItem>;
+}
+
 export interface CoverageSummary {
   selected_position_count: number;
   observed_market_bucket_count: number;
