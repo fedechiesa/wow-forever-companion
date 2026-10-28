@@ -1,5 +1,17 @@
 # Arquitectura
 
+## Verificación operativa de Fase 6
+
+El flujo publicado se ensayó con watcher/CLI reales, archivo sintético externo,
+preflight offline, TrialDatabase en un clúster PostgreSQL nuevo y lectores v2,
+seguido de HTTP GET real con el App React montado. No se agregó una funcionalidad
+ni se modificaron SQL, motores, UI o contratos. La referencia protegida del ensayo
+fue otra base nueva del mismo lab; desarrollo no se conectó. Archivo y backup son
+independientes de DB/API/catálogo. La ingestión sigue siendo manual y condicionada
+a contexto revisado y destino distinto terminado en `_test`.
+[Resultados y bloqueos](PHASE_6_PRELAUNCH_READINESS.md),
+[procedimiento de lanzamiento](LAUNCH_DAY_RUNBOOK.md).
+
 ## Catálogo descriptivo 5D.2
 
 El MVP incorpora `app/catalog.py`: cliente AHledger por ID, validación y caché

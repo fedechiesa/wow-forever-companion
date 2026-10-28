@@ -1,5 +1,9 @@
 # WoW Forever Companion
 
+Operación de lanzamiento: [runbook PowerShell](docs/LAUNCH_DAY_RUNBOOK.md) y
+[ensayo sintético de extremo a extremo](docs/PHASE_6_PRELAUNCH_READINESS.md).
+La validación del WTF real, primer `/reload` e identidad económica auténtica sigue pendiente.
+
 Catálogo prelaunch 5D.2: [uso y validación](docs/PHASE_5D2_ITEM_CATALOG.md).
 Consulta manual puntual a AHledger, caché temporal separada de precios y nombres
 en Evidencia launch; iconos con placeholder hasta autorización. Sin migraciones,

@@ -11,9 +11,18 @@ ranking, sincronización automática y ampliaciones de interfaz quedan después.
 
 ### Prioridad inmediata: PRELAUNCH READINESS CHECK
 
-**Pendiente; no iniciada.** Tras el cierre publicado de 5D.2 (`7d566de`), la
-prioridad es validar el recorrido mínimo de lanzamiento con las herramientas
-existentes. No se inicia aquí ninguna prueba, importación ni implementación.
+**Fase 6 sintética aprobada para cierre y publicación; validación auténtica pendiente.** Tras el
+cierre publicado de 5D.2 (`7d566de`), Fase 6 comprobó watcher → archivo → preflight
+→ TrialDatabase → lectores v2 → API GET → React, con un clúster nuevo aislado.
+Sin capturas auténticas, conexiones a desarrollo, nuevas funciones ni cambios
+3A/3B. [Resultados y bloqueos](PHASE_6_PRELAUNCH_READINESS.md) y
+[manual PowerShell de lanzamiento](LAUNCH_DAY_RUNBOOK.md). La aprobación sólo
+cierra este ensayo y su documentación; no autoriza importaciones auténticas.
+
+La prioridad inmediata restante es confirmar ruta WTF y primer `/reload` reales,
+identidad económica/fase auténticas y autorizar por separado la primera importación.
+El recorrido siguiente conserva sus controles operativos; la aprobación sintética
+no sustituye esos datos ni habilita ingestión automática.
 
 1. **Watcher:** comprobar archivado ante `/reload`, copia estable, deduplicación
    y preservación del original; confirmar que el watcher sólo archiva y no ingiere.
@@ -358,7 +367,10 @@ Criterio de salida:
 - El asistente puede responder preguntas de mercado usando nuestros datos.
 - Las respuestas no dependen de inventar informacion fuera de la base.
 
-## Fase 6: Validacion con fuente real
+## Fase 6: Prelaunch Readiness Check y validación con fuente real
+
+Estado: ensayo sintético extremo a extremo aprobado para cierre y publicación, sin nuevas funcionalidades;
+prueba con cliente y contexto auténtico pendientes. [Informe](PHASE_6_PRELAUNCH_READINESS.md).
 
 Objetivo: reemplazar o complementar los datos simulados con datos reales usando lo aprendido en la Fase 0.5.
 
