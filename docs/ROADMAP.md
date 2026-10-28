@@ -2,12 +2,43 @@
 
 Este roadmap prioriza aprender rapido y mantener una arquitectura explicable. El objetivo no es construir todas las ideas posibles, sino llegar a una primera version usable de Market Intelligence para el Auction House.
 
-## Prioridad prelaunch — 26/10/2026
+## Prioridad prelaunch — 28/10/2026
 
 Fecha objetivo comunicada para el lanzamiento: **04/11/2026**. El MVP personal
 prioriza conservar originales, importar manualmente evidencia validada y consultar
 estados económicos auténticos cuando su contexto esté verificado. IA, predicción,
 ranking, sincronización automática y ampliaciones de interfaz quedan después.
+
+### Prioridad inmediata: PRELAUNCH READINESS CHECK
+
+**Pendiente; no iniciada.** Tras el cierre publicado de 5D.2 (`7d566de`), la
+prioridad es validar el recorrido mínimo de lanzamiento con las herramientas
+existentes. No se inicia aquí ninguna prueba, importación ni implementación.
+
+1. **Watcher:** comprobar archivado ante `/reload`, copia estable, deduplicación
+   y preservación del original; confirmar que el watcher sólo archiva y no ingiere.
+2. **Preflight:** revisar offline formato/codec, integridad, hashes, procedencia y
+   bloqueos de una captura elegida, sin convertir declaraciones en hechos verificados.
+3. **Identidad económica:** confirmar región técnica, economía/reino o ámbito
+   conectado, alcance del AH/facción, origen y fase; conservar build/tiempo como
+   desconocidos cuando no exista evidencia suficiente.
+4. **Límites numéricos:** revisar enteros, null/cero y precios extremos. El archivo
+   conserva hasta 2**63-1; precios >2147483647 bloquean la captura completa para
+   ingestión, sin truncar, redondear ni importar parcialmente.
+5. **Ingestión protegida:** validar destino explícito y aislado, preflight previo,
+   idempotencia e integridad de hechos/recibos; preservar las bases de desarrollo.
+   La primera importación auténtica sigue requiriendo captura y contexto revisados.
+6. **Consulta v2:** verificar dataset → economía → estado → hechos/recepciones,
+   precios exactos, variantes y fallback a IDs. Varios estados de un bucket no
+   forman días nuevos; el catálogo descriptivo no autentica la evidencia.
+
+El cierre de esta comprobación deberá dejar resultados y bloqueos reproducibles
+para el MVP del 04/11/2026. No amplía catálogo, profesiones, UI, motores ni
+automatización. Referencias: [watcher](PHASE_5A2_LOCAL_WATCHER.md),
+[preflight e ingestión](PHASE_5B2_MANUAL_INGESTION.md) y
+[consulta v2](PHASE_5C1_EVIDENCE_DASHBOARD.md).
+
+### Fases completadas y pendientes de validación auténtica
 
 - **5A.1/5A.2:** archivado local y watcher implementados. Primera prueba con
   `/reload` real aún pendiente; el watcher sólo archiva, no importa.
@@ -31,7 +62,7 @@ ranking, sincronización automática y ampliaciones de interfaz quedan después.
   caché revalidadas; build/locale por item e imágenes siguen pendientes. Se conserva
   el informe original y su veredicto histórico. [Pruebas y cierre](PHASE_5D1_ITEM_CATALOG_RESEARCH.md).
   Se conserva la [investigación histórica](ITEM_CATALOG_RESEARCH.md).
-- **5D.2 — cerrada técnicamente, publicación autorizada:** cliente AHledger puntual por ID,
+- **5D.2 — cerrada y publicada en main (`7d566de`):** cliente AHledger puntual por ID,
   CLI manual de hasta cuatro IDs, caché temporal en archivos sin PostgreSQL y GET
   local separado. Evidencia v2 launch muestra nombre/ID/procedencia y permite
   búsqueda por nombre; sin catálogo vigente conserva IDs. Placeholder local sin
